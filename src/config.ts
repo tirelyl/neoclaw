@@ -52,14 +52,14 @@ export interface McpServerConfig {
 export interface NeoClawConfig {
   agent: AgentConfig;
   feishu: FeishuConfig;
-  /** Minimum log level to output. Default: "info". */
-  logLevel?: 'debug' | 'info' | 'warn' | 'error';
-  /** Directory for agent workspaces. Default: ~/.neoclaw/workspaces. */
-  workspacesDir?: string;
   /** MCP servers to expose to agents. Keyed by server name. */
   mcpServers?: Record<string, McpServerConfig>;
+  /** Directory for agent workspaces. Default: ~/.neoclaw/workspaces. */
+  workspacesDir?: string;
   /** Directory containing skill subdirectories. Default: ~/.neoclaw/skills. */
   skillsDir?: string;
+  /** Minimum log level to output. Default: "info". */
+  logLevel?: 'debug' | 'info' | 'warn' | 'error';
 }
 
 // ── Defaults ──────────────────────────────────────────────────

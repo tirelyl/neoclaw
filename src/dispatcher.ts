@@ -262,7 +262,7 @@ export class Dispatcher {
   private _appendHistory(conversationKey: string, role: 'user' | 'neoclaw', text: string): void {
     if (!this._workspacesDir) return;
     const sanitized = conversationKey.replace(/:/g, '_');
-    const historyDir = join(this._workspacesDir, sanitized, '.history');
+    const historyDir = join(this._workspacesDir, sanitized, '.neoclaw', '.history');
     try {
       if (!existsSync(historyDir)) mkdirSync(historyDir, { recursive: true });
       const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD

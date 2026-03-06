@@ -11,6 +11,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, symlinkSync, lstatSyn
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import type { McpServerConfig } from '../config.js';
+import { loadConfig } from '../config.js';
 import type { FileSink, Subprocess } from 'bun';
 import type {
   Agent,
@@ -580,47 +581,61 @@ export class ClaudeCodeAgent implements Agent {
 
   /**
    * Prepare a workspace directory with agent-specific config files:
-   * - .mcp.json for MCP server definitions
-   * - .claude/skills/<name> symlinks for skill directories
+   * - .mcp.json for MCP server definitions (hot-reloaded from config file)
+   * - .claude/skills/<name> symlinks for skill directories (with stale cleanup)
    */
   private _prepareWorkspace(cwd: string): void {
-    // ── MCP servers → .mcp.json ──
-    const mcpServers = this.opts.mcpServers;
+    this._syncMcpServers(cwd);
+    this._syncSkills(cwd);
+  }
+
+  /** Re-read mcpServers from config file on each process start so changes take effect without daemon restart. */
+  private _syncMcpServers(cwd: string): void {
+    let mcpServers: Record<string, McpServerConfig> | undefined;
+    try {
+      const freshConfig = loadConfig();
+      mcpServers = freshConfig.mcpServers;
+    } catch {
+      mcpServers = this.opts.mcpServers;
+    }
+
     const mcpPath = join(cwd, '.mcp.json');
     if (mcpServers && Object.keys(mcpServers).length > 0) {
       const mcpConfig = { mcpServers };
       writeFileSync(mcpPath, JSON.stringify(mcpConfig, null, 2));
       log.debug(`Wrote .mcp.json to ${cwd}`);
     } else if (existsSync(mcpPath)) {
-      // Clean up stale .mcp.json if no servers are configured
       unlinkSync(mcpPath);
       log.debug(`Removed stale .mcp.json from ${cwd}`);
     }
+  }
 
-    // ── Skills → .claude/skills/<name> symlinks ──
+  /** Sync skill symlinks: create new, update changed, remove stale. */
+  private _syncSkills(cwd: string): void {
     const skillsDir = this.opts.skillsDir;
     if (!skillsDir || !existsSync(skillsDir)) return;
 
     const destSkillsDir = join(cwd, '.claude', 'skills');
     mkdirSync(destSkillsDir, { recursive: true });
 
-    // Read skill subdirectories from the source skills dir
-    let entries: string[];
+    // Collect valid skill names from source directory
+    let srcEntries: string[];
     try {
-      entries = readdirSync(skillsDir);
+      srcEntries = readdirSync(skillsDir);
     } catch {
       return;
     }
 
-    for (const name of entries) {
+    const validSkills = new Set<string>();
+    for (const name of srcEntries) {
       const srcSkill = join(skillsDir, name);
-      // Only symlink directories that contain a SKILL.md
       try {
         if (!lstatSync(srcSkill).isDirectory()) continue;
         if (!existsSync(join(srcSkill, 'SKILL.md'))) continue;
       } catch {
         continue;
       }
+      validSkills.add(name);
 
       const destLink = join(destSkillsDir, name);
       // Create or update the symlink
@@ -640,6 +655,25 @@ export class ClaudeCodeAgent implements Agent {
         log.debug(`Linked skill "${name}" → ${destLink}`);
       } catch (err) {
         log.warn(`Failed to symlink skill "${name}": ${err}`);
+      }
+    }
+
+    // Remove stale symlinks that no longer correspond to a valid skill
+    let destEntries: string[];
+    try {
+      destEntries = readdirSync(destSkillsDir);
+    } catch {
+      return;
+    }
+    for (const name of destEntries) {
+      if (validSkills.has(name)) continue;
+      const destLink = join(destSkillsDir, name);
+      try {
+        if (!lstatSync(destLink).isSymbolicLink()) continue; // don't touch real dirs/files
+        unlinkSync(destLink);
+        log.debug(`Removed stale skill symlink "${name}" from ${destSkillsDir}`);
+      } catch {
+        // ignore cleanup errors
       }
     }
   }
