@@ -447,8 +447,10 @@ function parseConvId(convId: string): { chatId: string; threadRootId?: string } 
 
 function formatStats(response: RunResponse): string | null {
   const parts: string[] = [];
+  if (response.model) parts.push(response.model);
   if (response.elapsedMs != null) parts.push(`${(response.elapsedMs / 1000).toFixed(1)}s`);
   if (response.inputTokens != null) parts.push(`${response.inputTokens} in`);
   if (response.outputTokens != null) parts.push(`${response.outputTokens} out`);
+  if (response.costUsd != null) parts.push(`$${response.costUsd.toFixed(4)}`);
   return parts.length > 0 ? parts.join(' · ') : null;
 }

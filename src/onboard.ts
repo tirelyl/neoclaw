@@ -25,6 +25,14 @@ const TEMPLATE = {
     appId: 'YOUR_FEISHU_APP_ID',
     appSecret: 'YOUR_FEISHU_APP_SECRET',
   },
+  mcpServers: {
+    'example-server': {
+      type: 'stdio',
+      command: 'npx',
+      args: ['-y', '@example/mcp-server'],
+    },
+  },
+  skillsDir: DEFAULTS.skillsDir,
 };
 
 export async function runOnboard(): Promise<void> {
@@ -45,7 +53,16 @@ export async function runOnboard(): Promise<void> {
   console.log();
   await installCronCli();
 
-  // ── Step 3: Memory directory ──────────────────────────────────
+  // ── Step 3: Skills directory ─────────────────────────────────
+  const skillsDir = DEFAULTS.skillsDir ?? join(NEOCLAW_HOME, 'skills');
+  if (!existsSync(skillsDir)) {
+    mkdirSync(skillsDir, { recursive: true });
+    console.log(`Created skills directory: ${skillsDir}`);
+  } else {
+    console.log(`Skills directory already exists: ${skillsDir}`);
+  }
+
+  // ── Step 4: Memory directory ──────────────────────────────────
   console.log();
   initMemoryDir();
 

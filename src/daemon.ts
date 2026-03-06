@@ -230,6 +230,7 @@ export class NeoClawDaemon {
       join(NEOCLAW_HOME, 'cache'),
       join(NEOCLAW_HOME, 'cron'),
       this.config.workspacesDir ?? join(NEOCLAW_HOME, 'workspaces'),
+      this.config.skillsDir ?? join(NEOCLAW_HOME, 'skills'),
     ];
     for (const dir of dirs) {
       if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
@@ -260,6 +261,8 @@ export class NeoClawDaemon {
       allowedTools: this.config.agent.allowedTools,
       systemPrompt,
       cwd: this.config.workspacesDir,
+      mcpServers: this.config.mcpServers,
+      skillsDir: this.config.skillsDir,
     });
     dispatcher.addAgent(agent);
     dispatcher.setDefaultAgent('claude_code');

@@ -7,9 +7,10 @@
  * Supports custom tool registration.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, symlinkSync, lstatSync, readlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import type { McpServerConfig } from '../config.js';
 import type { FileSink, Subprocess } from 'bun';
 import type {
   Agent,
@@ -388,6 +389,8 @@ export class ClaudeCodeAgent implements Agent {
       allowedTools?: string[];
       systemPrompt?: string | null;
       cwd?: string | null;
+      mcpServers?: Record<string, McpServerConfig>;
+      skillsDir?: string | null;
     } = {}
   ) {
     this._loadSessions();
@@ -571,7 +574,74 @@ export class ClaudeCodeAgent implements Agent {
     const dirName = conversationId.replace(/:/g, '_');
     const cwd = join(this.opts.cwd, dirName);
     mkdirSync(cwd, { recursive: true });
+    this._prepareWorkspace(cwd);
     return cwd;
+  }
+
+  /**
+   * Prepare a workspace directory with agent-specific config files:
+   * - .mcp.json for MCP server definitions
+   * - .claude/skills/<name> symlinks for skill directories
+   */
+  private _prepareWorkspace(cwd: string): void {
+    // ── MCP servers → .mcp.json ──
+    const mcpServers = this.opts.mcpServers;
+    const mcpPath = join(cwd, '.mcp.json');
+    if (mcpServers && Object.keys(mcpServers).length > 0) {
+      const mcpConfig = { mcpServers };
+      writeFileSync(mcpPath, JSON.stringify(mcpConfig, null, 2));
+      log.debug(`Wrote .mcp.json to ${cwd}`);
+    } else if (existsSync(mcpPath)) {
+      // Clean up stale .mcp.json if no servers are configured
+      unlinkSync(mcpPath);
+      log.debug(`Removed stale .mcp.json from ${cwd}`);
+    }
+
+    // ── Skills → .claude/skills/<name> symlinks ──
+    const skillsDir = this.opts.skillsDir;
+    if (!skillsDir || !existsSync(skillsDir)) return;
+
+    const destSkillsDir = join(cwd, '.claude', 'skills');
+    mkdirSync(destSkillsDir, { recursive: true });
+
+    // Read skill subdirectories from the source skills dir
+    let entries: string[];
+    try {
+      entries = readdirSync(skillsDir);
+    } catch {
+      return;
+    }
+
+    for (const name of entries) {
+      const srcSkill = join(skillsDir, name);
+      // Only symlink directories that contain a SKILL.md
+      try {
+        if (!lstatSync(srcSkill).isDirectory()) continue;
+        if (!existsSync(join(srcSkill, 'SKILL.md'))) continue;
+      } catch {
+        continue;
+      }
+
+      const destLink = join(destSkillsDir, name);
+      // Create or update the symlink
+      try {
+        if (lstatSync(destLink).isSymbolicLink()) {
+          if (readlinkSync(destLink) === srcSkill) continue; // already correct
+          unlinkSync(destLink); // target changed, re-create
+        } else {
+          continue; // real dir/file exists, don't overwrite
+        }
+      } catch {
+        // destLink doesn't exist — will create below
+      }
+
+      try {
+        symlinkSync(srcSkill, destLink);
+        log.debug(`Linked skill "${name}" → ${destLink}`);
+      } catch (err) {
+        log.warn(`Failed to symlink skill "${name}": ${err}`);
+      }
+    }
   }
 
   private async _getOrCreate(request: RunRequest): Promise<ClaudeProcess> {

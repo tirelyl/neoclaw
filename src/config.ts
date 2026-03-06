@@ -40,6 +40,15 @@ export interface FeishuConfig {
   groupAutoReply?: string[];
 }
 
+export interface McpServerConfig {
+  type: 'stdio' | 'http' | 'sse';
+  command?: string;
+  args?: string[];
+  url?: string;
+  headers?: Record<string, string>;
+  env?: Record<string, string>;
+}
+
 export interface NeoClawConfig {
   agent: AgentConfig;
   feishu: FeishuConfig;
@@ -47,6 +56,10 @@ export interface NeoClawConfig {
   logLevel?: 'debug' | 'info' | 'warn' | 'error';
   /** Directory for agent workspaces. Default: ~/.neoclaw/workspaces. */
   workspacesDir?: string;
+  /** MCP servers to expose to agents. Keyed by server name. */
+  mcpServers?: Record<string, McpServerConfig>;
+  /** Directory containing skill subdirectories. Default: ~/.neoclaw/skills. */
+  skillsDir?: string;
 }
 
 // ── Defaults ──────────────────────────────────────────────────
@@ -122,6 +135,8 @@ export const DEFAULTS: NeoClawConfig = {
   },
   logLevel: 'info',
   workspacesDir: join(NEOCLAW_HOME, 'workspaces'),
+  mcpServers: {},
+  skillsDir: join(NEOCLAW_HOME, 'skills'),
 };
 
 // ── Loader ────────────────────────────────────────────────────
@@ -182,5 +197,7 @@ export function loadConfig(): NeoClawConfig {
       file.workspacesDir,
       join(NEOCLAW_HOME, 'workspaces')
     ),
+    mcpServers: file.mcpServers ?? {},
+    skillsDir: str('NEOCLAW_SKILLS_DIR', file.skillsDir, join(NEOCLAW_HOME, 'skills')),
   };
 }
