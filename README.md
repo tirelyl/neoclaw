@@ -60,7 +60,7 @@
   <br/><img src="imgs/demo/cron.png" width="300" alt="Cron Jobs" />
 
 - **Three-layer Memory System**:
-  - **Identity Memory** (`SOUL.md`): Personality, values, communication style.
+  - **Identity Memory** (`identity/SOUL.md`): Personality, values, communication style.
   - **Semantic Memory** (`knowledge/`): Persistent knowledge organized by topic, with FTS5 search.
   - **Episodic Memory** (`episodes/`): Auto-generated session summaries on `/clear` or `/new`.
 
@@ -253,11 +253,14 @@ NeoClaw has a three-layer memory system with SQLite FTS5 full-text indexing, man
 
 ```
 ~/.neoclaw/memory/
-├── SOUL.md              # Identity: personality, values, communication style
-├── knowledge/           # Knowledge: topic-organized persistent knowledge (with frontmatter)
+├── identity/
+│   └── SOUL.md          # Identity: personality, values, communication style
+├── knowledge/           # Knowledge: topic-organized persistent knowledge
 ├── episodes/            # Episodes: auto-generated session summaries
 └── index.sqlite         # FTS5 full-text search index
 ```
+
+All memory files use the same frontmatter format (`title`, `date`, `tags`).
 
 | Category | Description | Read | Write |
 |----------|-------------|------|-------|

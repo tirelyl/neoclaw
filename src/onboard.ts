@@ -116,8 +116,8 @@ function initMemoryDir(): void {
   const memoryDir = join(NEOCLAW_HOME, 'memory');
   if (!existsSync(memoryDir)) mkdirSync(memoryDir, { recursive: true });
 
-  // Create knowledge/ and episodes/ subdirectories
-  for (const sub of ['knowledge', 'episodes']) {
+  // Create identity/, knowledge/ and episodes/ subdirectories
+  for (const sub of ['identity', 'knowledge', 'episodes']) {
     const dir = join(memoryDir, sub);
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
@@ -128,8 +128,8 @@ function initMemoryDir(): void {
   const srcDir = fileURLToPath(new URL('.', import.meta.url));
   const templatesDir = join(srcDir, 'templates');
 
-  // Copy SOUL.md template
-  const soulDest = join(memoryDir, 'SOUL.md');
+  // Copy SOUL.md template to identity/
+  const soulDest = join(memoryDir, 'identity', 'SOUL.md');
   if (!existsSync(soulDest)) {
     copyFileSync(join(templatesDir, 'SOUL.md'), soulDest);
     console.log(`Memory template written to: ${soulDest}`);

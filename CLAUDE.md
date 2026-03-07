@@ -111,8 +111,8 @@ Env var overrides: `NEOCLAW_AGENT_TYPE`, `NEOCLAW_MODEL`, `NEOCLAW_SYSTEM_PROMPT
 - `summarizer.ts`: Calls `claude --print` (haiku model, configurable via `agent.summaryModel`) to generate structured session summaries.
 - **MCP Server** (`mcp-server.ts`): Standalone stdio MCP server that instantiates its own `MemoryStore` + `MemoryManager`. Automatically injected into each workspace's `.mcp.json` so Claude Code can directly call `memory_search`, `memory_save`, `memory_list`. Receives `NEOCLAW_MEMORY_DIR` via environment variable.
 - **Session summarization**: On `/clear` or `/new`, Dispatcher calls `summarizeSession()` which reads only new content from `.history/` (tracked via `.last-summarized-offset` marker), generates summary, saves to `episodes/`, updates index.
-- **Storage layout**: `~/.neoclaw/memory/` — `SOUL.md` (identity), `knowledge/*.md` (semantic), `episodes/*.md` (episodic), `index.sqlite` (FTS5 index).
-- Three tools: `memory_search` (query + optional category filter), `memory_save` (content + topic for knowledge, or category="identity" for SOUL.md), `memory_list` (optional category filter).
+- **Storage layout**: `~/.neoclaw/memory/` — `identity/SOUL.md` (identity), `knowledge/*.md` (semantic), `episodes/*.md` (episodic), `index.sqlite` (FTS5 index). All `.md` files use the same frontmatter format (`title`, `date`, `tags`).
+- Three tools: `memory_search` (query + optional category filter), `memory_save` (content + topic for knowledge, or category="identity" for identity/SOUL.md), `memory_list` (optional category filter).
 
 ## Conventions
 

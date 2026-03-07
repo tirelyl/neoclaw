@@ -155,22 +155,14 @@ export class MemoryStore {
   reindex(memoryDir: string): void {
     this.db.run('DELETE FROM memory');
 
-    // Index SOUL.md as identity memory
-    const soulPath = join(memoryDir, 'SOUL.md');
-    if (existsSync(soulPath)) {
-      const content = readFileSync(soulPath, 'utf-8');
-      this.upsert({
-        id: 'SOUL',
-        category: 'identity',
-        title: 'Soul — Personality & Values',
-        content,
-        tags: ['identity', 'personality'],
-        date: new Date().toISOString().slice(0, 10),
-      });
-    }
+    const dirMap = {
+      identity: 'identity',
+      episodes: 'episode',
+      knowledge: 'knowledge',
+    } as const;
 
-    for (const category of ['episodes', 'knowledge'] as const) {
-      const dir = join(memoryDir, category);
+    for (const [dirName, cat] of Object.entries(dirMap)) {
+      const dir = join(memoryDir, dirName);
       if (!existsSync(dir)) continue;
 
       let entries: string[];
@@ -180,7 +172,6 @@ export class MemoryStore {
         continue;
       }
 
-      const cat = category === 'episodes' ? 'episode' : 'knowledge';
       for (const file of entries) {
         const content = readFileSync(join(dir, file), 'utf-8');
         const parsed = parseFrontmatter(content);
@@ -188,7 +179,7 @@ export class MemoryStore {
 
         this.upsert({
           id,
-          category: cat,
+          category: cat as MemoryEntry['category'],
           title: parsed.title || id,
           content: parsed.body,
           tags: parsed.tags,

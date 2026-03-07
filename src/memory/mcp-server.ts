@@ -47,7 +47,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: 'memory_save',
       description:
-        'Save information to memory. Use category="identity" to update SOUL.md, or omit/use "knowledge" for the knowledge base.',
+        'Save information to memory. Use category="identity" to update identity/SOUL.md, or omit/use "knowledge" for the knowledge base.',
       inputSchema: {
         type: 'object' as const,
         properties: {
@@ -67,7 +67,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             type: 'string',
             enum: ['identity', 'knowledge'],
             description:
-              'Target category. "identity" writes SOUL.md, "knowledge" (default) writes to knowledge/',
+              'Target category. "identity" writes identity/SOUL.md, "knowledge" (default) writes to knowledge/',
           },
         },
         required: ['content'],

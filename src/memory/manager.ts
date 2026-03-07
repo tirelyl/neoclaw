@@ -71,54 +71,51 @@ export class MemoryManager {
 
     try {
       const date = new Date().toISOString().slice(0, 10);
-
-      // Identity memory: write directly to SOUL.md (topic is ignored)
-      if (category === 'identity') {
-        const soulPath = join(this.memoryDir, 'SOUL.md');
-        writeFileSync(soulPath, content, 'utf-8');
-        this.store.upsert({
-          id: 'SOUL',
-          category: 'identity',
-          title: 'Soul — Personality & Values',
-          content,
-          tags: ['identity', 'personality'],
-          date,
-        });
-        log.info('SOUL.md updated via memory_save');
-        return 'Identity memory (SOUL.md) updated successfully.';
-      }
-
-      // Knowledge memory: write to knowledge/<topic>.md
-      if (!topic) return 'Error: "topic" is required for knowledge memory.';
-      if (!(topic in KNOWLEDGE_TOPICS))
-        return `Error: invalid topic "${topic}". Must be one of: ${Object.keys(KNOWLEDGE_TOPICS).join(', ')}`;
-
       const tagList = tags ?? [];
+
+      let dirName: string;
+      let fileName: string;
+      let title: string;
+
+      if (category === 'identity') {
+        dirName = 'identity';
+        fileName = 'SOUL.md';
+        title = topic || 'Soul — Personality & Values';
+        if (!tagList.length) tagList.push('identity', 'personality');
+      } else {
+        if (!topic) return 'Error: "topic" is required for knowledge memory.';
+        if (!(topic in KNOWLEDGE_TOPICS))
+          return `Error: invalid topic "${topic}". Must be one of: ${Object.keys(KNOWLEDGE_TOPICS).join(', ')}`;
+        dirName = 'knowledge';
+        fileName = `${topic}.md`;
+        title = KNOWLEDGE_TOPICS[topic as KnowledgeTopic];
+      }
 
       const frontmatter = [
         '---',
-        `title: "${KNOWLEDGE_TOPICS[topic as KnowledgeTopic]}"`,
+        `title: "${title}"`,
         `date: ${date}`,
         `tags: [${tagList.join(', ')}]`,
         '---',
       ].join('\n');
       const markdown = `${frontmatter}\n\n${content}\n`;
 
-      const knowledgeDir = join(this.memoryDir, 'knowledge');
-      if (!existsSync(knowledgeDir)) mkdirSync(knowledgeDir, { recursive: true });
-      writeFileSync(join(knowledgeDir, `${topic}.md`), markdown, 'utf-8');
+      const targetDir = join(this.memoryDir, dirName);
+      if (!existsSync(targetDir)) mkdirSync(targetDir, { recursive: true });
+      writeFileSync(join(targetDir, fileName), markdown, 'utf-8');
 
+      const id = fileName.replace('.md', '');
       this.store.upsert({
-        id: topic,
-        category: 'knowledge',
-        title: KNOWLEDGE_TOPICS[topic as KnowledgeTopic],
+        id,
+        category: category === 'identity' ? 'identity' : 'knowledge',
+        title,
         content,
         tags: tagList,
         date,
       });
 
-      log.info(`Saved knowledge: "${topic}" (${topic}.md)`);
-      return `Memory saved: "${topic}" (knowledge/${topic}.md)`;
+      log.info(`Saved ${category ?? 'knowledge'}: "${id}" (${dirName}/${fileName})`);
+      return `Memory saved: "${id}" (${dirName}/${fileName})`;
     } catch (err) {
       return `Save error: ${err}`;
     }

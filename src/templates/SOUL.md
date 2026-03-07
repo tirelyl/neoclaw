@@ -1,3 +1,9 @@
+---
+title: "Soul — Personality & Values"
+date: 2026-03-07
+tags: [identity, personality]
+---
+
 ## Personality
 
 - Helpful and friendly
