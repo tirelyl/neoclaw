@@ -103,6 +103,31 @@ export class MemoryStore {
 
   search(query: string, opts?: { category?: string; limit?: number }): MemoryEntry[] {
     const limit = opts?.limit ?? 10;
+
+    // Pass 1: exact FTS match (AND logic — all tokens must appear)
+    const results = this._ftsSearch(query, opts?.category, limit);
+
+    // Pass 2: if query contains CJK and pass 1 returned too few results,
+    // re-search with OR logic across individual characters for better recall.
+    // e.g. "女朋友" → "女" OR "朋" OR "友" — matches documents with "女友".
+    if (results.length < limit && CJK_RE.test(query)) {
+      const orQuery = buildCjkOrQuery(query);
+      if (orQuery !== query) {
+        const seen = new Set(results.map((r) => r.id));
+        const more = this._ftsSearch(orQuery, opts?.category, limit - results.length);
+        for (const r of more) {
+          if (!seen.has(r.id)) {
+            results.push(r);
+            seen.add(r.id);
+          }
+        }
+      }
+    }
+
+    return results;
+  }
+
+  private _ftsSearch(ftsQuery: string, category: string | undefined, limit: number): MemoryEntry[] {
     type Row = {
       id: string;
       category: string;
@@ -113,24 +138,29 @@ export class MemoryStore {
     };
 
     let rows: Row[];
-    if (opts?.category) {
-      rows = this.db
-        .query(
-          `SELECT m.id, m.category, m.title, m.content, m.tags, m.date
-         FROM memory_fts f JOIN memory m ON f.rowid = m.rowid
-         WHERE memory_fts MATCH ? AND m.category = ?
-         ORDER BY rank LIMIT ?`
-        )
-        .all(query, opts.category, limit) as Row[];
-    } else {
-      rows = this.db
-        .query(
-          `SELECT m.id, m.category, m.title, m.content, m.tags, m.date
-         FROM memory_fts f JOIN memory m ON f.rowid = m.rowid
-         WHERE memory_fts MATCH ?
-         ORDER BY rank LIMIT ?`
-        )
-        .all(query, limit) as Row[];
+    try {
+      if (category) {
+        rows = this.db
+          .query(
+            `SELECT m.id, m.category, m.title, m.content, m.tags, m.date
+           FROM memory_fts f JOIN memory m ON f.rowid = m.rowid
+           WHERE memory_fts MATCH ? AND m.category = ?
+           ORDER BY rank LIMIT ?`
+          )
+          .all(ftsQuery, category, limit) as Row[];
+      } else {
+        rows = this.db
+          .query(
+            `SELECT m.id, m.category, m.title, m.content, m.tags, m.date
+           FROM memory_fts f JOIN memory m ON f.rowid = m.rowid
+           WHERE memory_fts MATCH ?
+           ORDER BY rank LIMIT ?`
+          )
+          .all(ftsQuery, limit) as Row[];
+      }
+    } catch {
+      // FTS query syntax error (e.g. special chars) — return empty
+      rows = [];
     }
 
     return rows.map((r) => ({
@@ -215,6 +245,38 @@ export class MemoryStore {
   close(): void {
     this.db.close();
   }
+}
+
+// ── CJK query expansion ──────────────────────────────────────
+
+/** Matches CJK Unified Ideographs + Extension A (covers Chinese, Japanese kanji, Korean hanja). */
+const CJK_RE = /[\u4e00-\u9fff\u3400-\u4dbf]/;
+
+/**
+ * Build an OR-expanded FTS5 query for CJK text.
+ * "女朋友" → `"女" OR "朋" OR "友"`
+ * Mixed text: "Python项目" → `"Python" OR "项" OR "目"`
+ */
+function buildCjkOrQuery(raw: string): string {
+  const tokens: string[] = [];
+  let buf = '';
+
+  for (const ch of raw) {
+    if (CJK_RE.test(ch)) {
+      if (buf.trim()) {
+        tokens.push(...buf.trim().split(/\s+/));
+        buf = '';
+      }
+      tokens.push(ch);
+    } else {
+      buf += ch;
+    }
+  }
+  if (buf.trim()) tokens.push(...buf.trim().split(/\s+/));
+
+  if (tokens.length <= 1) return raw;
+  // Quote each token to prevent FTS5 syntax issues, join with OR
+  return tokens.map((t) => `"${t}"`).join(' OR ');
 }
 
 // ── Frontmatter parser ────────────────────────────────────────

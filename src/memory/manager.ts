@@ -19,18 +19,10 @@ const REINDEX_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 /** Format a memory entry into a structured, readable string. */
 function formatEntry(e: MemoryEntry): string {
-  const tagStr = e.tags.length > 0 ? e.tags.join(', ') : '';
-  return [
-    `id: ${e.id}`,
-    `title: ${e.title}`,
-    `category: ${e.category}`,
-    `date: ${e.date}`,
-    tagStr ? `tags: ${tagStr}` : '',
-    '',
-    e.content,
-  ]
-    .filter(Boolean)
-    .join('\n');
+  const lines = [`id: ${e.id}`, `title: ${e.title}`, `category: ${e.category}`, `date: ${e.date}`];
+  if (e.tags.length > 0) lines.push(`tags: ${e.tags.join(', ')}`);
+  lines.push('', e.content);
+  return lines.join('\n');
 }
 
 export const KNOWLEDGE_TOPICS = {
