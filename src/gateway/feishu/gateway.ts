@@ -320,11 +320,11 @@ export class FeishuGateway implements Gateway {
     const client = this._httpClient();
 
     let cardId: string | null = null;
-    let thinkingText = '';
+    let processText = ''; // Accumulated thinking + tool call content for the collapsible panel
     let mainText = '';
     let thinkingPanelAdded = false;
     let seq = 1;
-    let lastThinkingFlush = 0;
+    let lastProcessFlush = 0;
     let lastMainFlush = 0;
     const FLUSH_INTERVAL_MS = 150;
 
@@ -342,7 +342,7 @@ export class FeishuGateway implements Gateway {
         const now = Date.now();
 
         if (event.type === 'thinking_delta') {
-          thinkingText += event.text;
+          processText += event.text;
           const id = await ensureCard();
           if (!thinkingPanelAdded) {
             await insertThinkingPanel(client, id, seq++).catch((e) =>
@@ -350,12 +350,27 @@ export class FeishuGateway implements Gateway {
             );
             thinkingPanelAdded = true;
           }
-          if (now - lastThinkingFlush >= FLUSH_INTERVAL_MS) {
-            await updateCardText(client, id, STREAM_EL.thinkingMd, thinkingText, seq++).catch((e) =>
-              log.warn(`thinking update failed: ${e}`)
+          if (now - lastProcessFlush >= FLUSH_INTERVAL_MS) {
+            await updateCardText(client, id, STREAM_EL.thinkingMd, processText, seq++).catch((e) =>
+              log.warn(`process panel update failed: ${e}`)
             );
-            lastThinkingFlush = now;
+            lastProcessFlush = now;
           }
+        } else if (event.type === 'tool_use') {
+          const inputStr = JSON.stringify(event.input);
+          const truncated = inputStr.length > 300 ? inputStr.slice(0, 300) + '…' : inputStr;
+          processText += `\n\n> 🔧 **${event.name}** \`${truncated}\`\n\n`;
+          const id = await ensureCard();
+          if (!thinkingPanelAdded) {
+            await insertThinkingPanel(client, id, seq++).catch((e) =>
+              log.warn(`insertThinkingPanel failed: ${e}`)
+            );
+            thinkingPanelAdded = true;
+          }
+          await updateCardText(client, id, STREAM_EL.thinkingMd, processText, seq++).catch((e) =>
+            log.warn(`process panel update failed: ${e}`)
+          );
+          lastProcessFlush = now;
         } else if (event.type === 'text_delta') {
           mainText += event.text;
           const id = await ensureCard();
@@ -391,10 +406,10 @@ export class FeishuGateway implements Gateway {
             log.warn(`final main update failed: ${e}`)
           );
 
-          if (thinkingPanelAdded && thinkingText) {
-            // Final thinking text flush (collapse is deferred to after closeCardStreaming)
-            await updateCardText(client, id, STREAM_EL.thinkingMd, thinkingText, seq++).catch((e) =>
-              log.warn(`final thinking update failed: ${e}`)
+          if (thinkingPanelAdded && processText) {
+            // Final process panel flush (collapse is deferred to after closeCardStreaming)
+            await updateCardText(client, id, STREAM_EL.thinkingMd, processText, seq++).catch((e) =>
+              log.warn(`final process panel update failed: ${e}`)
             );
           }
 
@@ -421,7 +436,7 @@ export class FeishuGateway implements Gateway {
         );
         // Collapse thinking panel after closing streaming mode —
         // patching during streaming is unreliable as closeCardStreaming may reset element state.
-        if (thinkingPanelAdded && thinkingText) {
+        if (thinkingPanelAdded && processText) {
           await patchCardElement(
             client,
             cardId,

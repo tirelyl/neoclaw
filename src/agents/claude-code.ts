@@ -112,19 +112,6 @@ type InitEvent = {
   session_id: string;
   model: string;
 };
-type ContentBlockStartEvent = {
-  type: 'content_block_start';
-  content_block: { type: string; id?: string; name?: string; input?: Record<string, unknown> };
-};
-type ContentBlockDeltaEvent = {
-  type: 'content_block_delta';
-  index: number;
-  delta:
-    | { type: 'text_delta'; text: string }
-    | { type: 'thinking_delta'; thinking: string }
-    | { type: 'input_json_delta'; partial_json: string };
-};
-type ContentBlockStopEvent = { type: 'content_block_stop'; index: number };
 type AssistantContentBlock =
   | { type: 'thinking'; thinking: string }
   | { type: 'text'; text: string }
@@ -138,7 +125,6 @@ type PermissionDenial = {
   tool_use_id: string;
   tool_input: unknown;
 };
-
 type ResultEvent = {
   type: 'result';
   result: string;
@@ -179,13 +165,7 @@ function formatQuestionsAsText(questions: AskQuestion[]): string {
   return lines.join('\n').trim();
 }
 
-type CueEvent =
-  | InitEvent
-  | ContentBlockStartEvent
-  | ContentBlockDeltaEvent
-  | ContentBlockStopEvent
-  | AssistantEvent
-  | ResultEvent;
+type CueEvent = InitEvent | AssistantEvent | ResultEvent;
 
 function parseCliEvent(line: string): CueEvent | null {
   try {
@@ -438,22 +418,15 @@ export class ClaudeCodeAgent implements Agent {
     const proc = await this._getOrCreate(request);
 
     for await (const evt of proc.exchange(request.text, request.attachments)) {
-      if (evt.type === 'content_block_delta') {
-        const delta = (evt as ContentBlockDeltaEvent).delta;
-        if (delta.type === 'text_delta') {
-          textParts.push(delta.text);
-          yield { type: 'text_delta', text: delta.text };
-        } else if (delta.type === 'thinking_delta') {
-          thinkingParts.push(delta.thinking);
-          yield { type: 'thinking_delta', text: delta.thinking };
-        }
-      } else if (evt.type === 'assistant') {
+      if (evt.type === 'assistant') {
         // CLI outputs full assistant message events (not incremental deltas)
         const blocks = (evt as AssistantEvent).message.content;
         for (const block of blocks) {
           if (block.type === 'thinking') {
             thinkingParts.push(block.thinking);
             yield { type: 'thinking_delta', text: block.thinking };
+          } else if (block.type === 'tool_use') {
+            yield { type: 'tool_use', name: block.name, input: block.input };
           } else if (block.type === 'text') {
             textParts.push(block.text);
             yield { type: 'text_delta', text: block.text };
