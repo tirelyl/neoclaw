@@ -7,6 +7,8 @@
 
 import { loadConfig } from '../config.js';
 
+const DEFAULT_SUMMARY_TIMEOUT_SECS = 300;
+
 /** Model priority: config.agent.summaryModel > ANTHROPIC_SMALL_FAST_MODEL > haiku default. */
 function getSummaryModel(): string {
   try {
@@ -16,6 +18,16 @@ function getSummaryModel(): string {
     /* ignore */
   }
   return 'haiku';
+}
+
+function getSummaryTimeoutMs(): number {
+  try {
+    const config = loadConfig();
+    const secs = config.agent.summaryTimeoutSecs ?? DEFAULT_SUMMARY_TIMEOUT_SECS;
+    return Math.max(1, secs) * 1000;
+  } catch {
+    return DEFAULT_SUMMARY_TIMEOUT_SECS * 1000;
+  }
 }
 
 export interface SessionSummary {
@@ -53,6 +65,7 @@ Transcript:
 
 export async function summarizeTranscript(transcript: string): Promise<string> {
   const model = getSummaryModel();
+  const timeoutMs = getSummaryTimeoutMs();
   const prompt = SUMMARIZE_PROMPT + transcript;
   const env = { ...process.env };
   delete env['CLAUDECODE'];
@@ -62,7 +75,7 @@ export async function summarizeTranscript(transcript: string): Promise<string> {
     stdout: 'pipe',
     stderr: 'pipe',
     env,
-    timeout: 60_000,
+    timeout: timeoutMs,
   });
 
   if (result.exitCode !== 0) {

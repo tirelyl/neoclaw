@@ -29,6 +29,8 @@ export interface AgentConfig {
   allowedTools?: string[];
   /** Max seconds to wait for an agent response before timing out. Default: 300. */
   timeoutSecs?: number;
+  /** Max seconds to wait for session summarization Claude CLI call. Default: 300. */
+  summaryTimeoutSecs?: number;
 }
 
 export interface FeishuConfig {
@@ -101,6 +103,7 @@ export const DEFAULTS: NeoClawConfig = {
     type: 'claude_code',
     model: 'sonnet',
     summaryModel: 'haiku',
+    summaryTimeoutSecs: 300,
     systemPrompt: DEFAULT_SYSTEM_PROMPT,
     allowedTools: [],
     timeoutSecs: 600,
@@ -159,6 +162,11 @@ export function loadConfig(): NeoClawConfig {
       type: str('NEOCLAW_AGENT_TYPE', file.agent?.type, DEFAULTS.agent.type),
       model: opt('NEOCLAW_MODEL', file.agent?.model),
       summaryModel: opt('NEOCLAW_SUMMARY_MODEL', file.agent?.summaryModel),
+      summaryTimeoutSecs: num(
+        'NEOCLAW_SUMMARY_TIMEOUT_SECS',
+        file.agent?.summaryTimeoutSecs,
+        DEFAULTS.agent.summaryTimeoutSecs ?? 300
+      ),
       systemPrompt:
         opt('NEOCLAW_SYSTEM_PROMPT', file.agent?.systemPrompt) ?? DEFAULTS.agent.systemPrompt,
       allowedTools: arr('NEOCLAW_ALLOWED_TOOLS', file.agent?.allowedTools, []),
