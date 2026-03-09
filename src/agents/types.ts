@@ -37,6 +37,16 @@ export interface RunRequest {
   extra?: Record<string, unknown>;
 }
 
+/** Outbound image payload to send via the gateway (base64-encoded binary). */
+export interface OutboundImage {
+  /** Base64-encoded image bytes. Data URL prefix is also accepted. */
+  base64: string;
+  /** Optional MIME type hint (e.g. image/png). */
+  mimeType?: string;
+  /** Optional filename used during upload. */
+  fileName?: string;
+}
+
 export interface RunResponse {
   text: string;
   thinking?: string | null;
@@ -46,6 +56,8 @@ export interface RunResponse {
   outputTokens?: number | null;
   elapsedMs?: number | null;
   model?: string | null;
+  /** Optional outbound images for the gateway to send as real media messages. */
+  outboundImages?: OutboundImage[];
 }
 
 // ── Streaming event types ─────────────────────────────────────

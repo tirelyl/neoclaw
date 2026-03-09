@@ -14,7 +14,7 @@
  */
 
 import * as Lark from '@larksuiteoapi/node-sdk';
-import type { AgentStreamEvent, RunResponse } from '../../agents/types.js';
+import type { AgentStreamEvent, OutboundImage, RunResponse } from '../../agents/types.js';
 import type { FeishuConfig } from '../../config.js';
 import { logger } from '../../utils/logger.js';
 import type { Gateway, InboundMessage, MessageHandler, ReplyFn, StreamHandler } from '../types.js';
@@ -34,6 +34,7 @@ import {
   removeReaction,
   sendCard,
   sendCardByRef,
+  sendImageFromBuffer,
   sendMarkdown,
   STREAM_EL,
   updateCardText,
@@ -88,12 +89,7 @@ export class FeishuGateway implements Gateway {
   /** Proactively send a message to a chat (e.g. restart notifications). */
   async send(chatId: string, response: RunResponse): Promise<void> {
     const client = this._httpClient();
-    const stats = formatStats(response);
-    await sendCard(
-      client,
-      chatId,
-      buildCard({ text: response.text, thinking: response.thinking, stats })
-    );
+    await this._sendResponse(client, chatId, response);
   }
 
   // ── Internals ───────────────────────────────────────────────
@@ -241,13 +237,48 @@ export class FeishuGateway implements Gateway {
     replyToMessageId: string
   ): Promise<void> {
     const client = this._httpClient();
+    await this._sendResponse(client, chatId, response, replyToMessageId);
+  }
+
+  private async _sendResponse(
+    client: Lark.Client,
+    chatId: string,
+    response: RunResponse,
+    replyToMessageId?: string
+  ): Promise<void> {
     const stats = formatStats(response);
-    await sendCard(
-      client,
-      chatId,
-      buildCard({ text: response.text, thinking: response.thinking, stats }),
-      replyToMessageId ? { replyToMessageId } : undefined
-    );
+    const hasCardContent = Boolean(response.text?.trim() || response.thinking || stats);
+    if (hasCardContent) {
+      await sendCard(
+        client,
+        chatId,
+        buildCard({ text: response.text, thinking: response.thinking, stats }),
+        replyToMessageId ? { replyToMessageId } : undefined
+      );
+    }
+    await this._sendOutboundImages(client, chatId, response.outboundImages, replyToMessageId);
+  }
+
+  private async _sendOutboundImages(
+    client: Lark.Client,
+    chatId: string,
+    images: OutboundImage[] | undefined,
+    replyToMessageId?: string
+  ): Promise<void> {
+    if (!images || images.length === 0) return;
+
+    for (const img of images) {
+      try {
+        const buf = decodeBase64Image(img.base64);
+        await sendImageFromBuffer(client, chatId, buf, {
+          replyToMessageId,
+          fileName: img.fileName,
+          mimeType: img.mimeType,
+        });
+      } catch (err) {
+        log.error(`Failed to send outbound image: ${err}`);
+      }
+    }
   }
 
   /**
@@ -326,6 +357,7 @@ export class FeishuGateway implements Gateway {
     let seq = 1;
     let lastThinkingFlush = 0;
     let lastMainFlush = 0;
+    let outboundImages: OutboundImage[] | undefined;
     const FLUSH_INTERVAL_MS = 150;
 
     // Create and send the card on first use — idempotent after that.
@@ -382,7 +414,12 @@ export class FeishuGateway implements Gateway {
           log.info(`Question form appended to card ${id} (${event.questions.length} questions)`);
         } else if (event.type === 'done') {
           const response = event.response;
-          // Ensure card exists even if no deltas arrived (e.g. very short responses)
+          outboundImages = response.outboundImages;
+          // For image-only responses, skip creating an empty streaming card.
+          const shouldRenderCard = Boolean(cardId || mainText || response.text || thinkingText);
+          if (!shouldRenderCard) continue;
+
+          // Ensure card exists even if no deltas arrived (e.g. very short text responses)
           const id = await ensureCard();
 
           // Final flush with canonical response text
@@ -427,6 +464,7 @@ export class FeishuGateway implements Gateway {
           log.warn(`closeCardStreaming failed: ${e}`)
         );
       }
+      await this._sendOutboundImages(client, chatId, outboundImages, replyToMessageId);
     }
   }
 }
@@ -451,4 +489,13 @@ function formatStats(response: RunResponse): string | null {
   if (response.outputTokens != null) parts.push(`${response.outputTokens} out`);
   if (response.costUsd != null) parts.push(`$${response.costUsd.toFixed(4)}`);
   return parts.length > 0 ? parts.join(' · ') : null;
+}
+
+function decodeBase64Image(value: string): Buffer {
+  const trimmed = value.trim();
+  if (!trimmed) throw new Error('empty base64 image payload');
+
+  const comma = trimmed.indexOf(',');
+  const base64 = trimmed.startsWith('data:') && comma > 0 ? trimmed.slice(comma + 1) : trimmed;
+  return Buffer.from(base64, 'base64');
 }

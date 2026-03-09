@@ -20,7 +20,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { basename, isAbsolute, join, resolve } from 'node:path';
 import type { McpServerConfig } from '../config.js';
 import { loadConfig } from '../config.js';
 import { createDebouncedFlush } from '../utils/debounced-flush.js';
@@ -31,6 +31,7 @@ import type {
   AgentStreamEvent,
   AskQuestion,
   Attachment,
+  OutboundImage,
   RunRequest,
   RunResponse,
 } from './types.js';
@@ -46,6 +47,18 @@ const ASK_USER_HINT = `\
 
 When the AskUserQuestion tool is denied, the gateway has already captured your questions and presented them to the user via an interactive form. Do not mention errors or denials — simply tell the user you have questions and wait for their response.
 Always set multiSelect to false (only single-select is supported).`;
+
+const OUTBOUND_IMAGE_HINT = `\
+## Feishu Image Send Integration
+
+When you need NeoClaw to send one or more real Feishu image messages, include exactly one XML block in your final answer:
+<neoclaw_images>{"images":[{"path":"/absolute/or/relative/path.png"}]}</neoclaw_images>
+
+Rules:
+- Keep normal user-facing text outside the block.
+- images[] items support either "path" or "base64".
+- Optional fields: "mimeType", "fileName".
+- Use valid JSON inside the block.`;
 
 // ── JSONL protocol types ──────────────────────────────────────
 
@@ -171,6 +184,100 @@ function formatQuestionsAsText(questions: AskQuestion[]): string {
   return lines.join('\n').trim();
 }
 
+type OutboundImageSpec = {
+  path?: string;
+  base64?: string;
+  mimeType?: string;
+  fileName?: string;
+};
+
+function stripImageProtocolBlocks(text: string): string {
+  const lower = text.toLowerCase();
+  const openTag = '<neoclaw_images>';
+  const closeTag = '</neoclaw_images>';
+
+  let i = 0;
+  let out = '';
+  while (i < text.length) {
+    const start = lower.indexOf(openTag, i);
+    if (start === -1) {
+      out += text.slice(i);
+      break;
+    }
+    out += text.slice(i, start);
+    const end = lower.indexOf(closeTag, start + openTag.length);
+    if (end === -1) {
+      // Incomplete block while streaming: hide until we see the closing tag.
+      break;
+    }
+    i = end + closeTag.length;
+  }
+  return out;
+}
+
+function extractOutboundImages(
+  text: string,
+  cwd?: string | null
+): { text: string; outboundImages?: OutboundImage[] } {
+  const re = /<neoclaw_images>\s*([\s\S]*?)\s*<\/neoclaw_images>/gi;
+
+  let selected: {
+    start: number;
+    end: number;
+    specs: OutboundImageSpec[];
+  } | null = null;
+
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const raw = m[1]?.trim();
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw) as { images?: OutboundImageSpec[] };
+      const specs = parsed.images ?? [];
+      if (specs.length === 0) continue;
+      selected = {
+        start: m.index,
+        end: re.lastIndex,
+        specs,
+      };
+    } catch {
+      // Keep scanning; the model may mention literal tags before the real payload block.
+    }
+  }
+
+  if (!selected) return { text };
+
+  const cleaned = `${text.slice(0, selected.start)}${text.slice(selected.end)}`.trim();
+  const outboundImages: OutboundImage[] = [];
+
+  for (const spec of selected.specs) {
+    if (spec.base64 && spec.base64.trim()) {
+      outboundImages.push({
+        base64: spec.base64.trim(),
+        mimeType: spec.mimeType,
+        fileName: spec.fileName,
+      });
+      continue;
+    }
+
+    if (!spec.path || !spec.path.trim()) continue;
+    const path = spec.path.trim();
+    const resolved = isAbsolute(path) ? path : resolve(cwd ?? process.cwd(), path);
+    if (!existsSync(resolved)) {
+      log.warn(`Outbound image path not found: ${resolved}`);
+      continue;
+    }
+    const base64 = readFileSync(resolved).toString('base64');
+    outboundImages.push({
+      base64,
+      mimeType: spec.mimeType,
+      fileName: spec.fileName ?? basename(resolved),
+    });
+  }
+
+  return outboundImages.length > 0 ? { text: cleaned, outboundImages } : { text: cleaned };
+}
+
 type CueEvent =
   | InitEvent
   | ContentBlockStartEvent
@@ -231,9 +338,10 @@ class ClaudeProcess {
       args.push('--dangerously-skip-permissions');
     }
     args.push('--disallowedTools', 'CronCreate,CronDelete,CronList');
+    const builtInPrompt = `${ASK_USER_HINT}\n\n${OUTBOUND_IMAGE_HINT}`;
     const systemPrompt = this.opts.systemPrompt
-      ? `${this.opts.systemPrompt}\n\n${ASK_USER_HINT}`
-      : ASK_USER_HINT;
+      ? `${this.opts.systemPrompt}\n\n${builtInPrompt}`
+      : builtInPrompt;
     args.push('--append-system-prompt', systemPrompt);
     return args;
   }
@@ -425,6 +533,8 @@ export class ClaudeCodeAgent implements Agent {
     const textParts: string[] = [];
     const thinkingParts: string[] = [];
     let resultEvt: ResultEvent | null = null;
+    let rawText = '';
+    let streamedCleanText = '';
 
     const proc = await this._getOrCreate(request);
 
@@ -432,8 +542,16 @@ export class ClaudeCodeAgent implements Agent {
       if (evt.type === 'content_block_delta') {
         const delta = (evt as ContentBlockDeltaEvent).delta;
         if (delta.type === 'text_delta') {
-          textParts.push(delta.text);
-          yield { type: 'text_delta', text: delta.text };
+          rawText += delta.text;
+          const cleaned = stripImageProtocolBlocks(rawText);
+          if (cleaned.length >= streamedCleanText.length) {
+            const inc = cleaned.slice(streamedCleanText.length);
+            if (inc) {
+              textParts.push(inc);
+              yield { type: 'text_delta', text: inc };
+            }
+          }
+          streamedCleanText = cleaned;
         } else if (delta.type === 'thinking_delta') {
           thinkingParts.push(delta.thinking);
           yield { type: 'thinking_delta', text: delta.thinking };
@@ -448,7 +566,7 @@ export class ClaudeCodeAgent implements Agent {
       this._flushSessions();
     }
 
-    const baseText = resultEvt?.result || textParts.join('');
+    const baseText = resultEvt?.result || rawText || textParts.join('');
     const askQuestions = resultEvt ? extractAskQuestions(resultEvt) : null;
     // Yield ask_questions BEFORE done so the streaming card is still open when the gateway appends the form
     if (askQuestions && askQuestions.length > 0) {
@@ -458,7 +576,11 @@ export class ClaudeCodeAgent implements Agent {
         conversationId: request.conversationId,
       };
     }
-    const text = baseText;
+    const conversationCwd = this.opts.cwd
+      ? join(this.opts.cwd, request.conversationId.replace(/:/g, '_'))
+      : null;
+    const extracted = extractOutboundImages(baseText, conversationCwd);
+    const text = extracted.text;
     const thinking = thinkingParts.length > 0 ? thinkingParts.join('') : null;
 
     log.info(`Run done: ${JSON.stringify({ text, thinking, resultEvt })}`);
@@ -474,6 +596,7 @@ export class ClaudeCodeAgent implements Agent {
         outputTokens: resultEvt?.usage?.output_tokens ?? null,
         elapsedMs: Date.now() - t0,
         model: resultEvt?.model ?? null,
+        outboundImages: extracted.outboundImages,
       },
     };
   }
