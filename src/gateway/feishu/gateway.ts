@@ -392,17 +392,10 @@ export class FeishuGateway implements Gateway {
           );
 
           if (thinkingPanelAdded && thinkingText) {
-            // Final thinking flush, then collapse the panel
+            // Final thinking text flush (collapse is deferred to after closeCardStreaming)
             await updateCardText(client, id, STREAM_EL.thinkingMd, thinkingText, seq++).catch((e) =>
               log.warn(`final thinking update failed: ${e}`)
             );
-            await patchCardElement(
-              client,
-              id,
-              STREAM_EL.thinkingPanel,
-              { tag: 'collapsible_panel', expanded: false },
-              seq++
-            ).catch((e) => log.warn(`collapse thinking panel failed: ${e}`));
           }
 
           // Append stats footer using markdown (note tag unsupported in schema V2)
@@ -426,6 +419,17 @@ export class FeishuGateway implements Gateway {
         await closeCardStreaming(client, cardId, seq++).catch((e) =>
           log.warn(`closeCardStreaming failed: ${e}`)
         );
+        // Collapse thinking panel after closing streaming mode —
+        // patching during streaming is unreliable as closeCardStreaming may reset element state.
+        if (thinkingPanelAdded && thinkingText) {
+          await patchCardElement(
+            client,
+            cardId,
+            STREAM_EL.thinkingPanel,
+            { expanded: false },
+            seq++
+          ).catch((e) => log.warn(`collapse thinking panel failed: ${e}`));
+        }
       }
     }
   }

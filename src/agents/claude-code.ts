@@ -125,6 +125,14 @@ type ContentBlockDeltaEvent = {
     | { type: 'input_json_delta'; partial_json: string };
 };
 type ContentBlockStopEvent = { type: 'content_block_stop'; index: number };
+type AssistantContentBlock =
+  | { type: 'thinking'; thinking: string }
+  | { type: 'text'; text: string }
+  | { type: 'tool_use'; id: string; name: string; input: unknown };
+type AssistantEvent = {
+  type: 'assistant';
+  message: { content: AssistantContentBlock[] };
+};
 type PermissionDenial = {
   tool_name: string;
   tool_use_id: string;
@@ -176,6 +184,7 @@ type CueEvent =
   | ContentBlockStartEvent
   | ContentBlockDeltaEvent
   | ContentBlockStopEvent
+  | AssistantEvent
   | ResultEvent;
 
 function parseCliEvent(line: string): CueEvent | null {
@@ -437,6 +446,18 @@ export class ClaudeCodeAgent implements Agent {
         } else if (delta.type === 'thinking_delta') {
           thinkingParts.push(delta.thinking);
           yield { type: 'thinking_delta', text: delta.thinking };
+        }
+      } else if (evt.type === 'assistant') {
+        // CLI outputs full assistant message events (not incremental deltas)
+        const blocks = (evt as AssistantEvent).message.content;
+        for (const block of blocks) {
+          if (block.type === 'thinking') {
+            thinkingParts.push(block.thinking);
+            yield { type: 'thinking_delta', text: block.thinking };
+          } else if (block.type === 'text') {
+            textParts.push(block.text);
+            yield { type: 'text_delta', text: block.text };
+          }
         }
       } else if (evt.type === 'result') {
         resultEvt = evt as ResultEvent;
