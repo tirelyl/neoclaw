@@ -21,6 +21,13 @@ function formatStats(response: RunResponse): string | null {
 
 /**
  * 构建 Markdown 消息内容
+ *
+ * 注意：企业微信智能助手的 markdown 支持有限，只支持基本语法：
+ * - 标题：# ## ###
+ * - 加粗：**text**
+ * - 链接：[text](url)
+ * - 列表：- 或 1.
+ * - 引用：不引用（企业微信 markdown 可能不支持）
  */
 export function buildMarkdownContent(opts: {
   text: string;
@@ -29,17 +36,18 @@ export function buildMarkdownContent(opts: {
 }): string {
   const lines: string[] = [];
 
-  // 思考内容（折叠显示）
+  // 思考内容（使用简单格式）
   if (opts.thinking) {
-    lines.push('> 💭 **Thinking Process**');
-    lines.push('> ');
-    // 将思考内容每行加上引用符号
+    lines.push('**💭 思考过程**');
+    lines.push('');
+    // 将思考内容每行加上缩进（企业微信 markdown 可能不支持引用）
     const thinkingLines = opts.thinking.split('\n');
     for (const line of thinkingLines) {
-      lines.push(`> ${line}`);
+      lines.push(`　　${line}`);
     }
-    lines.push('> ');
+    lines.push('');
     lines.push('---');
+    lines.push('');
   }
 
   // 主内容
@@ -47,8 +55,10 @@ export function buildMarkdownContent(opts: {
 
   // 统计信息
   if (opts.stats) {
+    lines.push('');
     lines.push('---');
-    lines.push(`<font color="comment">${opts.stats}</font>`);
+    lines.push('');
+    lines.push(`*${opts.stats}*`);
   }
 
   return lines.join('\n');

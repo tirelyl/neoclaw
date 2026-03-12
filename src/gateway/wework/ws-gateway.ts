@@ -14,6 +14,20 @@ import type { AgentStreamEvent, RunResponse } from '../../agents/types.js';
 import { logger } from '../../utils/logger.js';
 import type { Gateway, InboundMessage, MessageHandler, ReplyFn, StreamHandler } from '../types.js';
 import { WeworkWsClient, type InboundMessage as WsInboundMessage, type MessageCallback } from './ws-client.js';
+import { buildMarkdownContent } from './sender.js';
+
+/**
+ * 格式化统计信息
+ */
+function formatStats(response: RunResponse): string | null {
+  const parts: string[] = [];
+  if (response.model) parts.push(response.model);
+  if (response.elapsedMs != null) parts.push(`${(response.elapsedMs / 1000).toFixed(1)}s`);
+  if (response.inputTokens != null) parts.push(`${response.inputTokens} in`);
+  if (response.outputTokens != null) parts.push(`${response.outputTokens} out`);
+  if (response.costUsd != null) parts.push(`$${response.costUsd.toFixed(4)}`);
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
 
 const log = logger('wework-ws-gateway');
 
@@ -323,30 +337,52 @@ export class WeworkWsGateway implements Gateway {
 
     // 流式处理闭包
     const streamHandler: StreamHandler = async (stream) => {
+      let accumulatedThinking = ''; // 累积的思考内容
+      let accumulatedText = ''; // 累积的文本内容
+
       for await (const evt of stream) {
         if (evt.type === 'thinking_delta') {
-          // 思考内容可以发送流式消息更新
+          // 累积思考内容
+          accumulatedThinking += evt.text;
+          // 发送流式更新，显示思考内容
           this._client.sendStream({
             reqId: wsMsg.reqId,
             streamId,
-            content: evt.text || '',
+            content: `💭 思考过程：\n\n${accumulatedThinking}`,
             finish: false,
           });
         } else if (evt.type === 'text_delta') {
-          // 文本内容发送流式消息更新
+          // 累积文本内容
+          accumulatedText += evt.text;
+          // 发送流式更新，显示当前文本
           this._client.sendStream({
             reqId: wsMsg.reqId,
             streamId,
-            content: evt.text || '',
+            content: accumulatedText,
             finish: false,
           });
         } else if (evt.type === 'done') {
-          // 发送最终响应
+          // 发送最终的流式消息（包含思考内容、完整回复和统计信息）
           const response = evt.response;
-          this._client.sendText({
+          const stats = formatStats(response);
+
+          // 构建最终消息内容（包含思考过程）
+          let finalMessage = '';
+          if (accumulatedThinking) {
+            finalMessage += `💭 思考过程：\n\n${accumulatedThinking}\n\n---\n\n`;
+          }
+          finalMessage += accumulatedText;
+          if (stats) {
+            finalMessage += `\n\n---\n\n*${stats}*`;
+          }
+
+          this._client.sendStream({
             reqId: wsMsg.reqId,
-            text: response.text,
+            streamId,
+            content: finalMessage,
+            finish: true,
           });
+
           this.activeStreams.delete(streamKey);
         }
       }

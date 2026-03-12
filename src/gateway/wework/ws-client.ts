@@ -178,6 +178,34 @@ export class WeworkWsClient extends EventEmitter {
   }
 
   /**
+   * 发送 Markdown 响应
+   */
+  sendMarkdown(message: {
+    reqId: string; // 请求 ID，来自消息回调
+    content: string;
+  }): boolean {
+    if (!this._ws || this._ws.readyState !== WebSocket.OPEN || !this._subscribed) {
+      log.warn('Cannot send markdown message: WebSocket not ready or not subscribed');
+      return false;
+    }
+
+    const payload = {
+      cmd: 'aibot_respond_msg',
+      headers: {
+        req_id: message.reqId,
+      },
+      body: {
+        msgtype: 'markdown',
+        markdown: {
+          content: message.content,
+        },
+      },
+    };
+
+    return this._send(payload);
+  }
+
+  /**
    * 发送流式消息
    */
   sendStream(message: {
