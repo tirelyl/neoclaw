@@ -7,7 +7,7 @@
   </p>
   <p>
     NeoClaw is a scalable AI super assistant designed with a Gateway architecture.<br/>
-    It currently supports <strong>Feishu (Lark)</strong> and <strong>WeCom (企业微信)</strong> as messaging gateways, with <strong>Claude Code</strong> as the powerful AI backend.
+    It currently supports <strong>Feishu (Lark)</strong> and <strong>WeCom</strong> as messaging gateways, with <strong>Claude Code</strong> as the powerful AI backend.
   </p>
   <p>
     <a href="README.zh-CN.md">中文</a> | <strong>English</strong>
@@ -40,7 +40,7 @@
 
 - **Full Claude Code Support**: Powered by the world's most powerful Agent, seamlessly supporting everything from Claude Code (including Plugins, Skills, MCPs, etc.), delivering the most powerful AI capabilities.
 
-- **Multi-Platform Support**: Currently supports Feishu (Lark) and WeCom (企业微信).
+- **Multi-Platform Support**: Currently supports Feishu (Lark) and WeCom.
   - **Feishu**: Perfectly adapts to various scenarios such as private chats, group chats, and topic groups.
   - **WeCom**: Supports enterprise messaging with HTTP callback integration.
 
@@ -102,7 +102,7 @@
   >   }
   > }
   > ```
-- **At least one messaging platform**: Either Feishu (Lark) or WeCom (企业微信) account and app.
+- **At least one messaging platform**: Either Feishu (Lark) or WeCom account and app.
 
 ### Installation
 
