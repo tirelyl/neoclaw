@@ -53,6 +53,15 @@ export interface WeworkConfig {
   groupAutoReply?: string[];
 }
 
+export interface DashboardConfig {
+  /** 是否启用 Gateway Dashboard */
+  enabled?: boolean;
+  /** HTTP 服务端口 */
+  port?: number;
+  /** 是否启用 CORS */
+  cors?: boolean;
+}
+
 export interface McpServerConfig {
   type: 'stdio' | 'http' | 'sse';
   command?: string;
@@ -67,6 +76,8 @@ export interface NeoClawConfig {
   feishu: FeishuConfig;
   /** 企业微信配置（可选） */
   wework?: WeworkConfig;
+  /** Gateway Dashboard 配置（可选） */
+  dashboard?: DashboardConfig;
   /** MCP servers to expose to agents. Keyed by server name. */
   mcpServers?: Record<string, McpServerConfig>;
   /** Directory for agent workspaces. Default: ~/.neoclaw/workspaces. */
@@ -75,6 +86,8 @@ export interface NeoClawConfig {
   skillsDir?: string;
   /** Minimum log level to output. Default: "info". */
   logLevel?: 'debug' | 'info' | 'warn' | 'error';
+  /** File path blacklist - agents will be prevented from reading/writing these paths. Supports glob patterns. */
+  fileBlacklist?: string[];
 }
 
 // ── Defaults ──────────────────────────────────────────────────
@@ -131,10 +144,26 @@ export const DEFAULTS: NeoClawConfig = {
     secret: '',
     groupAutoReply: [],
   },
+  dashboard: {
+    enabled: false,
+    port: 3000,
+    cors: true,
+  },
   mcpServers: {},
   skillsDir: join(NEOCLAW_HOME, 'skills'),
   workspacesDir: join(NEOCLAW_HOME, 'workspaces'),
   logLevel: 'info',
+  fileBlacklist: [
+    '~/.claude/**',
+    '~/.config/claude/**',
+    '/etc/shadow',
+    '/etc/passwd',
+    '**/.env',
+    '**/credentials.json',
+    '**/secrets/**',
+    '~/.neoclaw/config.json', // NeoClaw config file (protects blacklist itself)
+    '~/.neoclaw/config.json.backup', // Config backups
+  ],
 };
 
 // ── Loader ────────────────────────────────────────────────────
@@ -196,6 +225,11 @@ export function loadConfig(): NeoClawConfig {
       websocketUrl: opt('WEWORK_WEBSOCKET_URL', file.wework?.websocketUrl),
       groupAutoReply: arr('WEWORK_GROUP_AUTO_REPLY', file.wework?.groupAutoReply, []),
     },
+    dashboard: {
+      enabled: env['NEOCLAW_DASHBOARD_ENABLED'] === 'true' || file.dashboard?.enabled || false,
+      port: num('NEOCLAW_DASHBOARD_PORT', file.dashboard?.port, 3000),
+      cors: env['NEOCLAW_DASHBOARD_CORS'] === 'false' ? false : (file.dashboard?.cors ?? true),
+    },
     mcpServers: file.mcpServers ?? {},
     workspacesDir: str(
       'NEOCLAW_WORKSPACES_DIR',
@@ -204,5 +238,6 @@ export function loadConfig(): NeoClawConfig {
     ),
     skillsDir: str('NEOCLAW_SKILLS_DIR', file.skillsDir, join(NEOCLAW_HOME, 'skills')),
     logLevel: str('NEOCLAW_LOG_LEVEL', file.logLevel, 'info') as NeoClawConfig['logLevel'],
+    fileBlacklist: arr('NEOCLAW_FILE_BLACKLIST', file.fileBlacklist, DEFAULTS.fileBlacklist!),
   };
 }

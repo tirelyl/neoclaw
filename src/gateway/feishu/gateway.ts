@@ -203,6 +203,7 @@ export class FeishuGateway implements Gateway {
       authorId: parsed.senderOpenId,
       authorName: parsed.senderName,
       gatewayKind: this.kind,
+      chatType: parsed.chatType === 'p2p' ? 'private' : 'group',
       attachments: parsed.attachments.map((a) => ({
         buffer: a.buffer,
         // Extract 'image', 'file', etc. from the '<media:image>' placeholder

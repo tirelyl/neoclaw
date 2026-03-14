@@ -10,7 +10,7 @@
     It currently supports <strong>Feishu (Lark)</strong> and <strong>WeCom</strong> as messaging gateways, with <strong>Claude Code</strong> as the powerful AI backend.
   </p>
   <p>
-    <a href="README.zh-CN.md">中文</a> | <strong>English</strong>
+    <a href="docs/README.zh-CN.md">中文</a> | <strong>English</strong>
   </p>
   <img src="imgs/demo/identity.png" width="300" alt="Identity" />
 </div>
@@ -40,9 +40,10 @@
 
 - **Full Claude Code Support**: Powered by the world's most powerful Agent, seamlessly supporting everything from Claude Code (including Plugins, Skills, MCPs, etc.), delivering the most powerful AI capabilities.
 
-- **Multi-Platform Support**: Currently supports Feishu (Lark) and WeCom.
+- **Multi-Platform Support**: Currently supports Feishu (Lark), WeCom, and Gateway Dashboard.
   - **Feishu**: Perfectly adapts to various scenarios such as private chats, group chats, and topic groups.
   - **WeCom**: Supports enterprise messaging with HTTP callback integration.
+  - **Dashboard**: Web-based interface for direct AI interaction through your browser.
 
 - **Multi-Scenario Support**:
   - **Group Chat Support**: Mention @NeoClaw in group chats to trigger a reply.
@@ -144,6 +145,11 @@ bun onboard
     "secret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", // WeCom Bot Secret
     "groupAutoReply": [], // List of Group IDs for Auto-Reply
   },
+  "dashboard": {
+    "enabled": true, // Enable Dashboard Gateway
+    "port": 3000, // Backend WebSocket server port
+    "cors": true, // Enable CORS
+  },
   "mcpServers": {
     // MCP Servers (hot-reloaded on new process)
     "example-server": {
@@ -155,8 +161,41 @@ bun onboard
   "skillsDir": "~/.neoclaw/skills", // Skills directory
   "logLevel": "info",
   "workspacesDir": "~/.neoclaw/workspaces",
+  "fileBlacklist": [
+    // File access blacklist - prevents agent from reading/writing sensitive files
+    "~/.claude/**",           // Claude Code settings and data
+    "~/.config/claude/**",    // Alternative Claude config location
+    "/etc/shadow",            // System password file
+    "/etc/passwd",            // System user file
+    "**/.env",                // Environment variable files
+    "**/credentials.json",    // Credential files
+    "**/secrets/**",          // Secrets directories
+    "~/.neoclaw/config.json", // NeoClaw config file (protects blacklist itself)
+    "~/.neoclaw/config.json.backup", // Config backups
+  ],
 }
 ```
+
+#### File Blacklist
+
+The `fileBlacklist` configuration prevents the agent from accessing sensitive files and directories. It supports glob patterns:
+
+- `~` is expanded to the user's home directory
+- `**` matches any number of directories
+- `*` matches any characters except `/`
+- `?` matches any single character
+
+**Default blacklist includes:**
+- Claude Code configuration (`~/.claude/**`, `~/.config/claude/**`)
+- System files (`/etc/passwd`, `/etc/shadow`)
+- Environment files (`**/.env`)
+- Credentials (`**/credentials.json`)
+- Secrets (`**/secrets/**`)
+- NeoClaw configuration (`~/.neoclaw/config.json`) - **protects the blacklist itself**
+
+You can customize the blacklist via:
+- Configuration file: `fileBlacklist` array
+- Environment variable: `NEOCLAW_FILE_BLACKLIST` (comma-separated patterns)
 
 ### Start Service
 
@@ -165,6 +204,33 @@ bun start
 ```
 
 The service will automatically daemonize and run in the background, with logs output to `~/.neoclaw/logs/neoclaw.log`.
+
+### Access Dashboard
+
+If you have enabled the Dashboard Gateway in your configuration:
+
+```jsonc
+{
+  "dashboard": {
+    "enabled": true,
+    "port": 3000,
+  },
+}
+```
+
+After starting the service, open your browser and visit:
+
+```
+http://localhost:5173
+```
+
+The Dashboard provides a web interface for chatting with NeoClaw, supporting:
+
+- Real-time streaming responses
+- Session management
+- Markdown rendering with syntax highlighting
+- Thinking panel for Claude's reasoning process
+  <br/><img src="imgs/config/dashboard.png" width="600" alt="Dashboard" />
 
 ### Development Mode
 
@@ -334,17 +400,44 @@ neoclaw/
 │   ├── daemon.ts         # Daemon Process Logic
 │   ├── dispatcher.ts     # Message Dispatch Core
 │   └── index.ts          # Program Entry
-├── CLAUDE.md             # Claude Code Guide
-├── FEISHU_CONFIG.md      # Feishu Configuration Guide
-├── WEWORK_BOT.md      # WeCom Configuration Guide
+├── docs/                 # Documentation
+│   ├── CLAUDE.md         # Claude Code Guide
+│   ├── FEISHU_CONFIG.md  # Feishu Configuration Guide
+│   ├── WEWORK_BOT.md     # WeCom Configuration Guide
+│   └── README.zh-CN.md   # Chinese README
 └── package.json
 ```
 
 ## 🌐 Gateway Configuration
 
+### Dashboard Configuration
+
+The Dashboard Gateway provides a web-based interface for interacting with NeoClaw directly in your browser. Enable it in `~/.neoclaw/config.json`:
+
+```jsonc
+{
+  "dashboard": {
+    "enabled": true, // Enable Dashboard Gateway
+    "port": 3000, // Backend WebSocket server port (default: 3000)
+    "cors": true, // Enable CORS (default: true)
+  },
+}
+```
+
+**Environment variables:**
+
+- `NEOCLAW_DASHBOARD_ENABLED`: Set to `true` to enable
+- `NEOCLAW_DASHBOARD_PORT`: Port number for backend server
+- `NEOCLAW_DASHBOARD_CORS`: Set to `false` to disable CORS
+
+**Access URLs:**
+
+- Frontend: `http://localhost:5173`
+- WebSocket: `ws://localhost:3000/ws`
+
 ### Feishu Configuration
 
-For detailed instructions on configuring Feishu (Lark), see [FEISHU_CONFIG.md](FEISHU_CONFIG.md).
+For detailed instructions on configuring Feishu (Lark), see [FEISHU_CONFIG.md](docs/FEISHU_CONFIG.md).
 
 Key steps:
 
@@ -355,7 +448,7 @@ Key steps:
 
 ### WeCom Configuration
 
-For detailed instructions on configuring WeCom, see [WEWORK_BOT.md](WEWORK_BOT.md).
+For detailed instructions on configuring WeCom, see [WEWORK_BOT.md](docs/WEWORK_BOT.md).
 
 Key steps:
 
@@ -364,19 +457,19 @@ Key steps:
 3. Get `botId` and `secret`
 4. Update `~/.neoclaw/config.json` with your credentials
 
-**Note**: Both gateways can be configured and used simultaneously if needed.
+**Note**: All three gateways can be configured and used simultaneously if needed.
 
 ### Platform Feature Comparison
 
-| Feature           | Feishu            | WeCom Bot                   |
-| ----------------- | ----------------- | --------------------------- |
-| Connection        | WebSocket         | WebSocket (Long Connection) |
-| Streaming Cards   | ✅ Native support | ⚠️ Chunked messages         |
-| Interactive Forms | ✅ Card buttons   | ⚠️ Markdown format          |
-| @Mentions         | ✅                | ✅                          |
-| Threads           | ✅                | ❌                          |
-| Images/Files      | ✅                | ✅                          |
-| Server Required   | ✅ Yes            | ❌ No                       |
+| Feature           | Feishu            | WeCom Bot                   | Dashboard              |
+| ----------------- | ----------------- | --------------------------- | ---------------------- |
+| Connection        | WebSocket         | WebSocket (Long Connection) | WebSocket              |
+| Streaming Cards   | ✅ Native support | ⚠️ Chunked messages         | ✅ Real-time streaming |
+| Interactive Forms | ✅ Card buttons   | ⚠️ Markdown format          | ❌                     |
+| @Mentions         | ✅                | ✅                          | ❌                     |
+| Threads           | ✅                | ❌                          | ✅ Session management  |
+| Images/Files      | ✅                | ✅                          | ❌                     |
+| Server Required   | ✅ Yes            | ❌ No                       | ✅ Yes                 |
 
 ## 🤝 Contributing
 

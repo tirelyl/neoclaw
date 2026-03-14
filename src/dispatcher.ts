@@ -105,6 +105,9 @@ export class Dispatcher {
           chatId: msg.chatId,
           gatewayKind: msg.gatewayKind,
           attachments: msg.attachments,
+          extra: {
+            chatType: msg.chatType,
+          },
         };
 
         if (streamHandler && agent.stream) {

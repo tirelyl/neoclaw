@@ -308,6 +308,7 @@ export class WeworkWsGateway implements Gateway {
       authorId: wsMsg.fromUser,
       authorName: wsMsg.fromUser,
       gatewayKind: this.kind,
+      chatType: wsMsg.chatType === 'group' ? 'group' : 'private',
       attachments: [],
       meta: {
         msgType: wsMsg.msgType,

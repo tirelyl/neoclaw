@@ -33,6 +33,8 @@ export interface InboundMessage {
   attachments?: Attachment[];
   /** Platform-specific metadata. */
   meta?: Record<string, unknown>;
+  /** Chat type: 'private' for direct messages, 'group' for group chats. */
+  chatType?: 'private' | 'group';
 }
 
 // ── Reply / Handler ───────────────────────────────────────────

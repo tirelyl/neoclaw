@@ -1,5 +1,5 @@
 <div align="center">
-  <h1><img src="imgs/logo.png" width="45" alt="Logo" /> NeoClaw</h1>
+  <h1><img src="../imgs/logo.png" width="45" alt="Logo" /> NeoClaw</h1>
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
     <img src="https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white" alt="TypeScript">
@@ -10,9 +10,9 @@
     目前支持将 <strong>飞书</strong> 和 <strong>企业微信</strong> 作为消息网关，<strong>Claude Code</strong> 作为强大的 AI 后端。
   </p>
   <p>
-    <strong>中文</strong> | <a href="README.md">English</a>
+    <strong>中文</strong> | <a href="../README.md">English</a>
   </p>
-  <img src="imgs/demo/identity.png" width="300" alt="Identity" />
+  <img src="../imgs/demo/identity.png" width="300" alt="Identity" />
 </div>
 
 ## 📖 目录
@@ -40,30 +40,31 @@
 
 - **完整 Claude Code 支持**: 由世界上最强大的 Agent 驱动，完美支持 Claude Code 的一切能力（包括 Plugins、Skills、MCPs 等），提供最强大的 AI 协作体验。
 
-- **多平台支持**: 目前支持飞书和企业微信。
+- **多平台支持**: 目前支持飞书、企业微信和 Gateway Dashboard。
   - **飞书**: 完美适配私聊、群聊、话题群等多种场景。
   - **群聊支持**: 在群聊中 @NeoClaw 即可唤起回复。
-    <br/><img src="imgs/demo/group.png" width="300" alt="Group Chat" />
+    <br/><img src="../imgs/demo/group.png" width="300" alt="Group Chat" />
   - **话题群支持**: 支持在话题群中同时进行多个话题的讨论。
-    <br/><img src="imgs/demo/threads.jpeg" width="300" alt="Threads" />
+    <br/><img src="../imgs/demo/threads.jpeg" width="300" alt="Threads" />
+  - **Dashboard**: 基于 Web 的界面，可直接在浏览器中与 AI 对话。
 
 - **流式响应**:
   - **飞书**: 利用流式卡片实现打字机效果的流畅输出。
   - **企业微信**: 通过分块消息更新模拟流式输出。
-    <br/><img src="imgs/demo/streaming.png" width="300" alt="Streaming" />
+    <br/><img src="../imgs/demo/streaming.png" width="300" alt="Streaming" />
 
 - **问题澄清**: 支持交互式问卷，利用 Claude Code 的 `AskUserQuestion` 工具主动澄清需求。
-  <br/><img src="imgs/demo/form.png" width="300" alt="Form" />
+  <br/><img src="../imgs/demo/form.png" width="300" alt="Form" />
 
 - **多模态支持**: 支持飞书发送图片消息，Claude Code 可直接理解图片内容。
-  <br/><img src="imgs/demo/image.png" width="300" alt="Image Understanding" />
+  <br/><img src="../imgs/demo/image.png" width="300" alt="Image Understanding" />
 
 - **工作区隔离**: 每个会话拥有独立的工作目录 (`~/.neoclaw/workspaces/<conversationId>`)
 
 - **并发控制**: 每个会话拥有独立的加锁队列，确保消息按顺序处理，避免并发冲突。
 
 - **定时任务**: 支持 Cron 表达式创建和管理定时任务。
-  <br/><img src="imgs/demo/cron.png" width="300" alt="Cron Jobs" />
+  <br/><img src="../imgs/demo/cron.png" width="300" alt="Cron Jobs" />
 
 - **三层记忆系统**:
   - **身份记忆** (`identity/SOUL.md`): 性格、价值观、沟通风格
@@ -75,7 +76,7 @@
 - **斜杠命令**:
   - `/clear`: 清除当前会话记忆
   - `/restart`: 重启服务
-    <br/><img src="imgs/demo/restart.png" width="300" alt="Restart" />
+    <br/><img src="../imgs/demo/restart.png" width="300" alt="Restart" />
   - `/status`: 查看当前状态
   - `/help`: 获取帮助信息
 
@@ -146,6 +147,11 @@ bun onboard
     "secret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", // 企业微信机器人 Secret
     "groupAutoReply": [], // 自动回复的群聊ID列表
   },
+  "dashboard": {
+    "enabled": true, // 启用 Gateway Dashboard
+    "port": 3000, // 后端 WebSocket 服务器端口
+    "cors": true, // 启用 CORS
+  },
   "mcpServers": {
     // MCP Servers（新进程启动时热加载）
     "example-server": {
@@ -167,6 +173,32 @@ bun start
 ```
 
 服务将自动守护进程化，后台运行，日志输出到 `~/.neoclaw/logs/neoclaw.log`。
+
+### 访问 Dashboard
+
+如果您在配置中启用了 Dashboard Gateway：
+
+```jsonc
+{
+  "dashboard": {
+    "enabled": true,
+    "port": 3000,
+  },
+}
+```
+
+启动服务后，在浏览器中访问：
+
+```
+http://localhost:5173
+```
+
+Dashboard 提供 Web 界面与 NeoClaw 对话，支持：
+
+- 实时流式响应
+- 会话管理
+- Markdown 渲染与代码高亮
+- 思考面板（展示 Claude 的推理过程）
 
 ### 开发模式
 
@@ -336,13 +368,40 @@ neoclaw/
 │   ├── daemon.ts         # 守护进程逻辑
 │   ├── dispatcher.ts     # 消息分发核心
 │   └── index.ts          # 程序入口
-├── CLAUDE.md             # Claude Code 指南
-├── FEISHU_CONFIG.md      # 飞书配置指南
-├── WEWORK_BOT.md      # 企业微信配置指南
+├── docs/                 # 文档目录
+│   ├── CLAUDE.md         # Claude Code 指南
+│   ├── FEISHU_CONFIG.md  # 飞书配置指南
+│   ├── WEWORK_BOT.md     # 企业微信配置指南
+│   └── README.zh-CN.md   # 中文 README
 └── package.json
 ```
 
 ## 🌐 网关配置
+
+### Dashboard 配置
+
+Dashboard Gateway 提供 Web 界面，可直接在浏览器中与 NeoClaw 交互。在 `~/.neoclaw/config.json` 中启用：
+
+```jsonc
+{
+  "dashboard": {
+    "enabled": true, // 启用 Dashboard Gateway
+    "port": 3000, // 后端 WebSocket 服务器端口（默认：3000）
+    "cors": true, // 启用 CORS（默认：true）
+  },
+}
+```
+
+**环境变量：**
+
+- `NEOCLAW_DASHBOARD_ENABLED`: 设置为 `true` 启用
+- `NEOCLAW_DASHBOARD_PORT`: 后端服务器端口号
+- `NEOCLAW_DASHBOARD_CORS`: 设置为 `false` 禁用 CORS
+
+**访问地址：**
+
+- 前端界面：`http://localhost:5173`
+- WebSocket 端点：`ws://localhost:3000/ws`
 
 ### 飞书配置
 
@@ -366,19 +425,19 @@ neoclaw/
 3. 获取 `botId` 和 `secret`
 4. 在 `~/.neoclaw/config.json` 中更新您的凭据
 
-**注意**: 如需要，可以同时配置并使用两个网关。
+**注意**: 如需要，可以同时配置并使用三个网关。
 
 ### 平台功能对比
 
-| 功能       | 飞书        | 企业微信机器人      |
-| ---------- | ----------- | ------------------- |
-| 连接方式   | WebSocket   | WebSocket（长连接） |
-| 流式卡片   | ✅ 原生支持 | ⚠️ 分块消息         |
-| 交互式表单 | ✅ 卡片按钮 | ⚠️ Markdown 格式    |
-| @提及      | ✅          | ✅                  |
-| 话题线程   | ✅          | ❌                  |
-| 图片/文件  | ✅          | ✅                  |
-| 需要服务器 | ✅ 是       | ❌ 否               |
+| 功能       | 飞书        | 企业微信机器人      | Dashboard       |
+| ---------- | ----------- | ------------------- | --------------- |
+| 连接方式   | WebSocket   | WebSocket（长连接） | WebSocket       |
+| 流式卡片   | ✅ 原生支持 | ⚠️ 分块消息         | ✅ 实时流式响应 |
+| 交互式表单 | ✅ 卡片按钮 | ⚠️ Markdown 格式    | ❌              |
+| @提及      | ✅          | ✅                  | ❌              |
+| 话题线程   | ✅          | ❌                  | ✅ 会话管理     |
+| 图片/文件  | ✅          | ✅                  | ❌              |
+| 需要服务器 | ✅ 是       | ❌ 否               | ✅ 是           |
 
 ## 🤝 贡献指南
 
