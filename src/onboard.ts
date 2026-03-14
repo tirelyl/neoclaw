@@ -102,7 +102,10 @@ function initConfig(): void {
       const feishuOk =
         typeof cfg?.feishu?.appId === 'string' &&
         cfg.feishu.appId !== '' &&
-        !cfg.feishu.appId.startsWith('YOUR_');
+        !cfg.feishu.appId.startsWith('YOUR_') &&
+        typeof cfg?.feishu?.appSecret === 'string' &&
+        cfg.feishu.appSecret !== '' &&
+        !cfg.feishu.appSecret.startsWith('YOUR_');
       const weworkOk =
         typeof cfg?.wework?.botId === 'string' &&
         cfg.wework.botId !== '' &&
