@@ -9,6 +9,7 @@
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { loadConfig } from '../config.js';
 import { logger } from '../utils/logger.js';
 import type { MemoryEntry, MemoryStore } from './store.js';
 import { summarizeTranscript } from './summarizer.js';
@@ -252,9 +253,17 @@ export class MemoryManager {
       return;
     }
 
-    // Truncate very long transcripts to avoid token limits
-    const maxChars = 50_000;
+    // Truncate very long transcripts to reduce timeout risk
+    const maxChars = 20_000;
     const truncated = transcript.length > maxChars ? transcript.slice(-maxChars) : transcript;
+    const rawChars = transcript.length;
+    const truncatedChars = truncated.length;
+    const summaryTimeoutSecs = loadConfig().agent.summaryTimeoutSecs ?? 300;
+    const startedAt = Date.now();
+
+    log.info(
+      `Summarizing session "${conversationId}": rawChars=${rawChars}, truncatedChars=${truncatedChars}, timeoutSecs=${summaryTimeoutSecs}`
+    );
 
     try {
       const summaryMd = await summarizeTranscript(truncated);
@@ -285,9 +294,15 @@ export class MemoryManager {
 
       // Persist offsets only after successful summarization
       writeFileSync(markerPath, JSON.stringify(newOffsets, null, 2), 'utf-8');
-      log.info(`Session summary saved: ${fileName}`);
+      const elapsedMs = Date.now() - startedAt;
+      log.info(
+        `Session summary saved: ${fileName} (elapsedMs=${elapsedMs}, truncatedChars=${truncatedChars}, timeoutSecs=${summaryTimeoutSecs})`
+      );
     } catch (err) {
-      log.warn(`Failed to summarize session "${conversationId}": ${err}`);
+      const elapsedMs = Date.now() - startedAt;
+      log.warn(
+        `Failed to summarize session "${conversationId}" (elapsedMs=${elapsedMs}, truncatedChars=${truncatedChars}, timeoutSecs=${summaryTimeoutSecs}): ${err}`
+      );
     }
   }
 

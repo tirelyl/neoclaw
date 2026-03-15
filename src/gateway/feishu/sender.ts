@@ -243,6 +243,108 @@ export async function sendCard(
   return sendMessage(client, target, 'interactive', content, opts);
 }
 
+/** Upload an image and return its image_key for message sending. */
+export async function uploadImage(
+  client: Lark.Client,
+  image: Buffer,
+  opts?: { fileName?: string; mimeType?: string }
+): Promise<string> {
+  void opts?.fileName;
+  void opts?.mimeType;
+
+  const res = await (
+    client as unknown as {
+      im: {
+        image: {
+          create: (opts: {
+            data: { image_type: 'message'; image: Buffer };
+          }) => Promise<Record<string, unknown>>;
+        };
+      };
+    }
+  ).im.image.create({
+    data: {
+      image_type: 'message',
+      image,
+    },
+  });
+
+  const imageKey =
+    (res['image_key'] as string | undefined) ??
+    ((res['data'] as Record<string, unknown> | undefined)?.['image_key'] as string | undefined);
+  if (!imageKey) {
+    throw new Error('Feishu image upload succeeded but no image_key returned');
+  }
+  return imageKey;
+}
+
+/** Send an image message using an existing image_key. */
+export async function sendImageByKey(
+  client: Lark.Client,
+  target: string,
+  imageKey: string,
+  opts?: { replyToMessageId?: string }
+): Promise<SendResult> {
+  return sendMessage(client, target, 'image', JSON.stringify({ image_key: imageKey }), opts);
+}
+
+/** Upload image bytes then send as a real image message. */
+export async function sendImageFromBuffer(
+  client: Lark.Client,
+  target: string,
+  image: Buffer,
+  opts?: { replyToMessageId?: string; fileName?: string; mimeType?: string }
+): Promise<SendResult> {
+  const imageKey = await uploadImage(client, image, {
+    fileName: opts?.fileName,
+    mimeType: opts?.mimeType,
+  });
+  return sendImageByKey(client, target, imageKey, { replyToMessageId: opts?.replyToMessageId });
+}
+
+function detectImageMime(buf: Buffer): string {
+  if (buf.length >= 8) {
+    // PNG
+    if (
+      buf[0] === 0x89 &&
+      buf[1] === 0x50 &&
+      buf[2] === 0x4e &&
+      buf[3] === 0x47 &&
+      buf[4] === 0x0d &&
+      buf[5] === 0x0a &&
+      buf[6] === 0x1a &&
+      buf[7] === 0x0a
+    )
+      return 'image/png';
+    // GIF
+    if (
+      buf[0] === 0x47 &&
+      buf[1] === 0x49 &&
+      buf[2] === 0x46 &&
+      buf[3] === 0x38 &&
+      (buf[4] === 0x37 || buf[4] === 0x39) &&
+      buf[5] === 0x61
+    )
+      return 'image/gif';
+    // WebP (RIFF....WEBP)
+    if (
+      buf.length >= 12 &&
+      buf[0] === 0x52 &&
+      buf[1] === 0x49 &&
+      buf[2] === 0x46 &&
+      buf[3] === 0x46 &&
+      buf[8] === 0x57 &&
+      buf[9] === 0x45 &&
+      buf[10] === 0x42 &&
+      buf[11] === 0x50
+    )
+      return 'image/webp';
+  }
+  // JPEG
+  if (buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xd8) return 'image/jpeg';
+  return 'application/octet-stream';
+}
+
 // ── Streaming card (JSON 2.0, requires cardkit API) ───────────
 
 /** Element IDs used in streaming cards — must be globally unique within the card. */
