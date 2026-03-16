@@ -163,8 +163,8 @@ bun onboard
   "workspacesDir": "~/.neoclaw/workspaces",
   "fileBlacklist": [
     // File access blacklist - prevents agent from reading/writing sensitive files
-    "~/.claude/**",           // Claude Code settings and data
-    "~/.config/claude/**",    // Alternative Claude config location
+    "~/.claude/settings.json",           // Claude Code settings
+    "~/.config/claude/settings.json",    // Alternative Claude config location
     "/etc/shadow",            // System password file
     "/etc/passwd",            // System user file
     "**/.env",                // Environment variable files
