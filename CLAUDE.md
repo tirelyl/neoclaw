@@ -9,7 +9,19 @@ bun install          # Install dependencies
 bun start            # Start daemon (self-daemonizes to background, logs to ~/.neoclaw/logs/neoclaw.log)
 bun onboard          # Generate ~/.neoclaw/config.json config template
 bun run dev          # Run with --watch (auto-restart on file changes)
-bun run --bun tsc --noEmit  # Type-check without emitting
+bun run typecheck    # Type-check without emitting (bun run --bun tsc --noEmit)
+bun run lint         # Lint with ESLint + Prettier
+```
+
+### CLI (citty)
+
+Entry point: `src/index.ts` → `src/cli/index.ts`. Uses [citty](https://github.com/unjs/citty) for CLI framework. Subcommands are lazily loaded from `src/cli/commands/`.
+
+```bash
+neoclaw start        # Start daemon (alias: bun start)
+neoclaw stop         # Stop running daemon
+neoclaw onboard      # Generate config template
+neoclaw cron <sub>   # Cron job management (create, list, delete, update)
 ```
 
 ## Architecture
@@ -90,7 +102,7 @@ The `stream()` method on `ClaudeCodeAgent` yields `AgentStreamEvent`s: `thinking
 **Cron scheduling** (`src/cron/`): Manages scheduled jobs (one-time and recurring).
 - `CronScheduler` (`scheduler.ts`): Polls every 30 seconds for due jobs. Matches 5-field cron expressions (min hour day month weekday). Prevents double-fires within 50 seconds. Injects conversation context into synthetic `InboundMessage`.
 - `CronJob`: `{ id, label?, message, chatId, gatewayKind, conversationId, runAt? (ISO 8601 one-time), cronExpr? (5-field cron recurring), enabled, createdAt, lastRunAt? }`
-- CLI (`src/cli/cron.ts`, command: `neoclaw-cron`): `create`, `list`, `delete`, `update` subcommands. Reads `NEOCLAW_CHAT_ID` and `NEOCLAW_GATEWAY_KIND` from environment. Cron CLI instructions are injected into the agent's system prompt.
+- CLI (`src/cli/commands/cron.ts`, command: `neoclaw cron`): `create`, `list`, `delete`, `update` subcommands. Reads `NEOCLAW_CHAT_ID` and `NEOCLAW_GATEWAY_KIND` from environment. Cron CLI instructions are injected into the agent's system prompt.
 
 **Daemon** (`daemon.ts`): Self-daemonizes on first launch (forks to background with `NEOCLAW_DAEMON=1` env var, redirects I/O to `~/.neoclaw/logs/neoclaw.log`). Uses PID file (`~/.neoclaw/cache/neoclaw.pid`) with SIGTERM takeover of existing instance (up to 10s grace, then SIGKILL). `/restart` command saves `~/.neoclaw/cache/restart-notify.json` (contains `{ chatId, gatewayKind }`), forks a new process, then aborts the current one; new process waits 5s for gateways to initialize, then delivers restart confirmation via `dispatcher.sendTo()` (retries up to 3 times with 3s delay). On startup, wraps agent with `createFileBlockedAgent()`, injects cron CLI instructions + file access restrictions into system prompt, validates at least one gateway is configured, and starts `CronScheduler`.
 
