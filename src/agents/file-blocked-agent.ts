@@ -2,91 +2,13 @@
  * File-blacklist-aware agent wrapper.
  *
  * Wraps an Agent and adds file access validation to tool calls.
- * For group chats, additionally restricts write operations (delete, modify, create)
- * on files outside the workspace directory.
  */
 
-import { checkFileAccess, FileAccessDenied, isPathInWorkspace } from '../utils/file-guard.js';
+import { checkFileAccess, FileAccessDenied } from '../utils/file-guard.js';
 import { logger } from '../utils/logger.js';
 import type { Agent, AgentStreamEvent, RunRequest, RunResponse } from './types.js';
 
 const log = logger('file-blocked-agent');
-
-/**
- * Check if a bash command contains write operations and validate file paths.
- * Group chats cannot write to (delete, modify, create) files outside the workspace directory.
- */
-function checkGroupChatWriteRestrictions(
-  bashCommand: string,
-  chatType: 'private' | 'group' | undefined,
-  workspaceDir: string | undefined
-): void {
-  // Only apply restrictions to group chats
-  if (chatType !== 'group') {
-    log.debug(`Skip group chat restriction: chatType=${chatType}`);
-    return;
-  }
-
-  if (!workspaceDir) {
-    log.warn('Workspace directory not configured, skipping group chat file write check');
-    return; // No workspace directory configured, skip check
-  }
-
-  // Check if command contains write operations
-  const writePatterns = [
-    /\brm\s+/, // rm - delete files
-    /\brmdir\s+/, // rmdir - remove directories
-    />\s*\S/, // > or >| - overwrite redirect
-    />>\s*\S/, // >> - append redirect
-    /\bmv\s+/, // mv - move/rename files
-    /\bcp\s+/, // cp - copy (could create new files outside workspace)
-    /\btouch\s+/, // touch - create files
-    /\bmkdir\s+/, // mkdir - create directories
-    /\bchmod\s+/, // chmod - modify permissions
-    /\bchown\s+/, // chown - change owner
-    /\bln\s+/, // ln - create symlinks (could escape workspace)
-    /\btee\s+\S/, // tee - write to files
-  ];
-
-  let hasWriteCommand = false;
-  for (const pattern of writePatterns) {
-    if (pattern.test(bashCommand)) {
-      hasWriteCommand = true;
-      break;
-    }
-  }
-
-  if (!hasWriteCommand) {
-    return; // Not a write command
-  }
-
-  log.info(`Group chat write command detected: ${bashCommand.substring(0, 100)}`);
-
-  // Extract file paths from the command
-  const paths = extractFilePathsFromBash(bashCommand);
-  log.info(`Extracted ${paths.length} paths from write command: ${JSON.stringify(paths)}`);
-
-  if (paths.length === 0) {
-    log.warn(
-      `No paths extracted from write command, blocking for safety: ${bashCommand.substring(0, 100)}`
-    );
-    // Cannot safely validate the command, so block it
-    throw new FileAccessDenied(
-      bashCommand.substring(0, 50),
-      `Could not validate file paths in write command for group chat. For security reasons, complex write commands must be explicitly validated.`
-    );
-  }
-
-  for (const path of paths) {
-    if (!isPathInWorkspace(path, workspaceDir)) {
-      log.warn(`Blocking write operation on file outside workspace: ${path}`);
-      throw new FileAccessDenied(
-        path,
-        `Group chats are not allowed to write to files outside the workspace directory`
-      );
-    }
-  }
-}
 
 /**
  * Extract file paths from tool use events.
@@ -232,64 +154,42 @@ function sanitizePathForLog(filePath: string): string {
  */
 export function createFileBlockedAgent(
   baseAgent: Agent,
-  blacklist: string[],
-  workspaceDir?: string
+  blacklist: string[]
 ): Agent {
-  const hasBlacklist = blacklist && blacklist.length > 0;
-
-  if (hasBlacklist) {
-    log.info(`File blacklist enabled with ${blacklist.length} rules`);
+  if (!blacklist || blacklist.length === 0) {
+    // No blacklist configured, return base agent as-is
+    return baseAgent;
   }
 
-  if (workspaceDir) {
-    log.info(`Group chat file write restrictions enabled for workspace: ${workspaceDir}`);
-  }
+  log.info(`File blacklist enabled with ${blacklist.length} rules`);
 
   return {
     kind: baseAgent.kind,
 
     async run(request: RunRequest): Promise<RunResponse> {
-      // For non-streaming mode, we validate file paths from the request text before execution
-      // This is a best-effort check as we can't intercept tool calls during execution
       try {
-        const chatType = request.extra?.chatType as 'private' | 'group' | undefined;
-
-        // Check if the request text contains suspicious file paths (only if blacklist is configured)
-        if (hasBlacklist) {
-          const pathsFromText = extractFilePathsFromBash(request.text);
-          for (const filePath of pathsFromText) {
-            await checkFileAccess(filePath, blacklist);
-          }
+        const pathsFromText = extractFilePathsFromBash(request.text);
+        for (const filePath of pathsFromText) {
+          await checkFileAccess(filePath, blacklist);
         }
 
-        // Check group chat write restrictions (always enabled if workspaceDir is set)
-        checkGroupChatWriteRestrictions(request.text, chatType, workspaceDir);
-
-        // Execute the base agent
         return await baseAgent.run(request);
       } catch (error) {
         if (error instanceof FileAccessDenied) {
           const sanitizedPath = sanitizePathForLog(error.filePath);
           log.warn(`File access blocked in non-streaming mode: ${sanitizedPath} - ${error.reason}`);
 
-          // Return a text response explaining the block
           return {
             text: `⚠️ **Security Warning**: Access to \`${sanitizedPath}\` was blocked because it matches a blacklist pattern.`,
           };
         }
 
-        // Re-throw unexpected errors
         throw error;
       }
     },
 
     async *stream(request: RunRequest): AsyncGenerator<AgentStreamEvent> {
-      // Intercept tool_use events and validate file paths
-      const chatType = request.extra?.chatType as 'private' | 'group' | undefined;
-
-      // Check if base agent supports streaming
       if (!baseAgent.stream) {
-        // If base agent doesn't support streaming, fall back to run()
         const response = await baseAgent.run(request);
         yield { type: 'done', response };
         return;
@@ -302,59 +202,26 @@ export function createFileBlockedAgent(
             const filePaths = extractFilePathsFromToolUse(event);
             log.debug(`Extracted file paths: ${filePaths.join(', ')}`);
 
-            // Check blacklist only if configured
-            if (hasBlacklist) {
-              for (const filePath of filePaths) {
-                await checkFileAccess(filePath, blacklist);
-              }
+            for (const filePath of filePaths) {
+              await checkFileAccess(filePath, blacklist);
             }
 
-            // Check group chat write restrictions for Bash commands
-            // If this check fails, we throw an error and skip yielding the tool_use event
-            if (event.name === 'Bash' && typeof event.input === 'object' && event.input !== null) {
-              const command = (event.input as { command: string }).command;
-              if (typeof command === 'string') {
-                checkGroupChatWriteRestrictions(command, chatType, workspaceDir);
-              }
-            }
-
-            // Check group chat write restrictions for Write/Edit tools
-            if (
-              chatType === 'group' &&
-              (event.name === 'Write' || event.name === 'Edit' || event.name === 'NotebookEdit') &&
-              workspaceDir
-            ) {
-              const filePath = (event.input as { file_path: string }).file_path;
-              if (typeof filePath === 'string' && !isPathInWorkspace(filePath, workspaceDir)) {
-                log.warn(`Blocking ${event.name} operation on file outside workspace: ${filePath}`);
-                throw new FileAccessDenied(
-                  filePath,
-                  `Group chats are not allowed to write to files outside the workspace directory`
-                );
-              }
-            }
-
-            // All checks passed, allow the tool call
             yield event;
           } catch (error) {
             if (error instanceof FileAccessDenied) {
               const sanitizedPath = sanitizePathForLog(error.filePath);
               log.warn(`File access blocked: ${sanitizedPath} - ${error.reason}`);
 
-              // Skip the tool_use event entirely and replace with an error message
-              // This prevents the agent from executing the blocked operation
               yield {
                 type: 'text_delta',
                 text: `\n\n⚠️ **Security Warning**: Access to \`${sanitizedPath}\` was blocked. ${error.reason}\n`,
               };
             } else {
-              // Unexpected error, allow the tool call
               log.error('Error checking file access:', error);
               yield event;
             }
           }
         } else {
-          // Not a tool_use event, pass through
           yield event;
         }
       }

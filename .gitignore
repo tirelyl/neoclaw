@@ -22,3 +22,6 @@ dist/
 # Test artifacts
 src/web/test-results/
 src/web/playwright-report/
+
+# claude config
+.claude
