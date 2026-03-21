@@ -1,0 +1,21 @@
+{
+  "name": "@neoclaw/cron",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./scheduler": "./src/scheduler.ts",
+    "./store": "./src/store.ts",
+    "./types": "./src/types.ts"
+  },
+  "scripts": {
+    "typecheck": "bun run --bun tsc --noEmit"
+  },
+  "dependencies": {
+    "@neoclaw/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.10"
+  }
+}
