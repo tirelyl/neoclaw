@@ -17,15 +17,9 @@ function App() {
   } | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  const {
-    sessions,
-    currentSessionId,
-    selectSession,
-    updateSession,
-  } = useSessions();
+  const { sessions, currentSessionId, selectSession, updateSession } = useSessions();
 
-  const { messages, isConnected, sendMessage, connectionStatus } =
-    useWebSocket(currentSessionId);
+  const { messages, isConnected, sendMessage, connectionStatus } = useWebSocket(currentSessionId);
 
   const handleSelectSession = (sessionId: string) => {
     setActiveNavigation(null);

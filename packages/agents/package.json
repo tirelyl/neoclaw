@@ -11,14 +11,16 @@
     "./workspace-manager": "./src/workspace-manager.ts"
   },
   "scripts": {
-    "typecheck": "bun run --bun tsc --noEmit"
+    "typecheck": "bun run --bun tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@neoclaw/core": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.27.1",
     "@opencode-ai/sdk": "^1.2.25"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.10"
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
   }
 }

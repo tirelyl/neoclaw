@@ -70,10 +70,12 @@ export function useWebSocket(sessionId: string | null) {
 
       // Register the current session with the server immediately after connection
       if (sessionId) {
-        ws.send(JSON.stringify({
-          type: 'register',
-          sessionId,
-        }));
+        ws.send(
+          JSON.stringify({
+            type: 'register',
+            sessionId,
+          })
+        );
       }
     };
 
@@ -207,29 +209,32 @@ export function useWebSocket(sessionId: string | null) {
     };
   }, [sessionId]);
 
-  const sendMessage = useCallback((text: string) => {
-    if (!wsRef.current || !sessionId || !isConnected) return;
+  const sendMessage = useCallback(
+    (text: string) => {
+      if (!wsRef.current || !sessionId || !isConnected) return;
 
-    // Add user message
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `user_${Date.now()}`,
-        role: 'user' as const,
-        content: text,
-        timestamp: Date.now(),
-      },
-    ]);
+      // Add user message
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `user_${Date.now()}`,
+          role: 'user' as const,
+          content: text,
+          timestamp: Date.now(),
+        },
+      ]);
 
-    // Send to server
-    wsRef.current.send(
-      JSON.stringify({
-        type: 'message',
-        sessionId,
-        content: text,
-      })
-    );
-  }, [sessionId, isConnected]);
+      // Send to server
+      wsRef.current.send(
+        JSON.stringify({
+          type: 'message',
+          sessionId,
+          content: text,
+        })
+      );
+    },
+    [sessionId, isConnected]
+  );
 
   const clearMessages = useCallback(() => {
     setMessages([]);

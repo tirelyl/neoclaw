@@ -1,5 +1,5 @@
 ---
-title: "General knowledge and miscellaneous"
+title: 'General knowledge and miscellaneous'
 date: 2026-03-07
 tags: []
 ---

@@ -10,12 +10,15 @@
     "./types": "./src/types.ts"
   },
   "scripts": {
-    "typecheck": "bun run --bun tsc --noEmit"
+    "typecheck": "bun run --bun tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@neoclaw/core": "workspace:*"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.10"
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
   }
 }

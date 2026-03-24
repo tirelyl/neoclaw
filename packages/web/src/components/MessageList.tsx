@@ -24,11 +24,7 @@ export function MessageList({ messages }: MessageListProps) {
   return (
     <div className="max-w-4xl mx-auto py-6 px-4 space-y-6">
       {messages.map((message, index) => (
-        <MessageBubble
-          key={message.id}
-          message={message}
-          isLast={index === messages.length - 1}
-        />
+        <MessageBubble key={message.id} message={message} isLast={index === messages.length - 1} />
       ))}
     </div>
   );

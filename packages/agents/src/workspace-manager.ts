@@ -90,9 +90,7 @@ export class WorkspaceManager {
 
   /** Re-read mcpServers from config file on each call so changes take effect without daemon restart. */
   private _syncMcpServers(cwd: string): void {
-    let mcpServers: Record<string, McpServerConfig> | undefined;
-
-    mcpServers = this._config.mcpServers;
+    const mcpServers = this._config.mcpServers;
 
     const createBuiltinMemoryServer = (): McpServerConfig => {
       const memoryDir = join(homedir(), '.neoclaw', 'memory');

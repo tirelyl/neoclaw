@@ -1,5 +1,5 @@
 ---
-title: "Owner personal info, background, career"
+title: 'Owner personal info, background, career'
 date: 2026-03-07
 tags: []
 ---

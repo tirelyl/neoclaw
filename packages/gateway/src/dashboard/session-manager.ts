@@ -62,7 +62,7 @@ export class SessionManager {
   /**
    * Mark a session as disconnected (for WebSocket disconnection tracking)
    */
-  disconnect(sessionId: string): void {
+  disconnect(_sessionId: string): void {
     // Currently a no-op, but can be extended to track connection state
   }
 
