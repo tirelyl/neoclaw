@@ -124,13 +124,14 @@ export function useWebSocket(sessionId: string | null) {
           ]);
         } else if (serverMessage.type === 'stream_start') {
           // Start streaming response
-          currentStreamRef.current = `stream_${Date.now()}`;
+          const streamId = `stream_${Date.now()}`;
+          currentStreamRef.current = streamId;
           currentThinkingRef.current = '';
 
           setMessages((prev) => [
             ...prev,
             {
-              id: currentStreamRef.current,
+              id: streamId,
               role: 'assistant' as const,
               content: '',
               timestamp: Date.now(),
@@ -148,6 +149,7 @@ export function useWebSocket(sessionId: string | null) {
             if (messageIndex === -1) return prev;
 
             const message = prev[messageIndex];
+            if (!message) return prev;
             const updated = { ...message };
 
             if (event.type === 'thinking_delta' && event.text) {
@@ -186,8 +188,10 @@ export function useWebSocket(sessionId: string | null) {
             if (messageIndex === -1) return prev;
 
             const newMessages = [...prev];
+            const message = newMessages[messageIndex];
+            if (!message) return prev;
             newMessages[messageIndex] = {
-              ...newMessages[messageIndex],
+              ...message,
               isStreaming: false,
             };
 

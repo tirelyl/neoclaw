@@ -374,7 +374,10 @@ export class WeworkWsGateway implements Gateway {
           const oldId = currentStreamId;
           currentStreamId = generateStreamId();
           streamStartedAt = Date.now();
-          log.info('Stream expired, rotated to new stream', { oldStreamId: oldId, newStreamId: currentStreamId });
+          log.info('Stream expired, rotated to new stream', {
+            oldStreamId: oldId,
+            newStreamId: currentStreamId,
+          });
         }
         return currentStreamId;
       };

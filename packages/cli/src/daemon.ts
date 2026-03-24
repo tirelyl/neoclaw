@@ -298,9 +298,7 @@ export class NeoClawDaemon {
     ];
 
     // Wrap agent with file blacklist enforcement
-    const agentsWithWrapped = agents.map((agent) =>
-      createFileBlockedAgent(agent, blacklist)
-    );
+    const agentsWithWrapped = agents.map((agent) => createFileBlockedAgent(agent, blacklist));
 
     // Initialize memory system (used for session summarization and periodic reindex)
     const memoryDir = join(NEOCLAW_HOME, 'memory');

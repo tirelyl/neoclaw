@@ -152,10 +152,7 @@ function sanitizePathForLog(filePath: string): string {
 /**
  * Wrap an agent to enforce file access policies.
  */
-export function createFileBlockedAgent(
-  baseAgent: Agent,
-  blacklist: string[]
-): Agent {
+export function createFileBlockedAgent(baseAgent: Agent, blacklist: string[]): Agent {
   if (!blacklist || blacklist.length === 0) {
     // No blacklist configured, return base agent as-is
     return baseAgent;

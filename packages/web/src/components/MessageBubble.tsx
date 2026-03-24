@@ -48,14 +48,18 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           ) : (
             <ReactMarkdown
               components={{
-                code({ inline, className, children, ...props }) {
+                code({ className, children, style: _style, ...props }) {
+                  void _style;
                   const match = /language-(\w+)/.exec(className || '');
-                  return !inline && match ? (
+                  return match ? (
                     <SyntaxHighlighter
-                      style={vscDarkPlus}
+                      style={
+                        vscDarkPlus as unknown as {
+                          [key: string]: import('react').CSSProperties;
+                        }
+                      }
                       language={match[1]}
                       PreTag="div"
-                      {...props}
                     >
                       {String(children).replace(/\n$/, '')}
                     </SyntaxHighlighter>

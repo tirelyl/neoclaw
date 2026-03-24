@@ -29,9 +29,7 @@ export function useSessions() {
         const sessionIdToSelect =
           lastSessionId && sorted.find((s) => s.id === lastSessionId)
             ? lastSessionId
-            : sorted.length > 0
-              ? sorted[0].id
-              : null;
+            : (sorted[0]?.id ?? null);
 
         if (sessionIdToSelect) {
           setCurrentSessionId(sessionIdToSelect);
@@ -86,7 +84,7 @@ export function useSessions() {
       // If we deleted the current session, switch to another one
       if (sessionId === currentSessionId) {
         const remaining = sessions.filter((s) => s.id !== sessionId);
-        if (remaining.length > 0) {
+        if (remaining[0]) {
           setCurrentSessionId(remaining[0].id);
         } else {
           setCurrentSessionId(null);
