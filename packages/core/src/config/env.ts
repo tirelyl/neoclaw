@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { AgentSchema, LogLevelSchema } from './schemas';
-import { formatZodError } from './utils';
 
 const intSchema = z.coerce.number().int().nonnegative();
 const csvArraySchema = z.string().transform((value) =>

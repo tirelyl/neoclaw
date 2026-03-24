@@ -4,20 +4,18 @@
  * 企业微信消息发送工具（用于 WebSocket 长连接模式）。
  */
 
-import type { RunResponse } from '@neoclaw/core';
-
 /**
  * 格式化统计信息
  */
-function formatStats(response: RunResponse): string | null {
-  const parts: string[] = [];
-  if (response.model) parts.push(response.model);
-  if (response.elapsedMs != null) parts.push(`${(response.elapsedMs / 1000).toFixed(1)}s`);
-  if (response.inputTokens != null) parts.push(`${response.inputTokens} in`);
-  if (response.outputTokens != null) parts.push(`${response.outputTokens} out`);
-  if (response.costUsd != null) parts.push(`$${response.costUsd.toFixed(4)}`);
-  return parts.length > 0 ? parts.join(' · ') : null;
-}
+// function formatStats(response: RunResponse): string | null {
+//   const parts: string[] = [];
+//   if (response.model) parts.push(response.model);
+//   if (response.elapsedMs != null) parts.push(`${(response.elapsedMs / 1000).toFixed(1)}s`);
+//   if (response.inputTokens != null) parts.push(`${response.inputTokens} in`);
+//   if (response.outputTokens != null) parts.push(`${response.outputTokens} out`);
+//   if (response.costUsd != null) parts.push(`$${response.costUsd.toFixed(4)}`);
+//   return parts.length > 0 ? parts.join(' · ') : null;
+// }
 
 /**
  * 构建 Markdown 消息内容
@@ -43,7 +41,7 @@ export function buildMarkdownContent(opts: {
     // 将思考内容每行加上缩进（企业微信 markdown 可能不支持引用）
     const thinkingLines = opts.thinking.split('\n');
     for (const line of thinkingLines) {
-      lines.push(`　　${line}`);
+      lines.push(`  ${line}`);
     }
     lines.push('');
     lines.push('---');

@@ -7,22 +7,18 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "dev": "pnpm --filter neoclaw dev",
-    "start": "pnpm --filter neoclaw start",
-    "onboard": "pnpm --filter neoclaw onboard",
-    "build": "pnpm -r run build",
+    "cli": "pnpm --filter neoclaw run start",
     "typecheck": "pnpm -r run typecheck",
     "lint": "pnpm -r run lint",
-    "cli": "pnpm --filter neoclaw start"
+    "format": "pnpm -r run format"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "@types/bun": "^1.3.10",
-    "@types/ws": "^8.18.1",
-    "eslint": "^9.0.0",
-    "eslint-plugin-prettier": "^5.0.0",
-    "prettier": "^3.0.0",
-    "typescript-eslint": "^8.0.0"
+    "@eslint/js": "catalog:",
+    "@types/bun": "catalog:",
+    "eslint": "catalog:",
+    "globals": "catalog:",
+    "prettier": "catalog:",
+    "typescript-eslint": "catalog:"
   },
   "packageManager": "pnpm@10.32.1"
 }

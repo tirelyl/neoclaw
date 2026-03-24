@@ -6,7 +6,11 @@
  * on files outside the workspace directory.
  */
 
-import { checkFileAccess, FileAccessDenied, isPathInWorkspace } from '@neoclaw/core/utils/file-guard';
+import {
+  checkFileAccess,
+  FileAccessDenied,
+  isPathInWorkspace,
+} from '@neoclaw/core/utils/file-guard';
 import { logger } from '@neoclaw/core/utils/logger';
 import type { Agent, AgentStreamEvent, RunRequest, RunResponse } from '@neoclaw/core';
 

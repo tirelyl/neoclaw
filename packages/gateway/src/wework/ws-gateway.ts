@@ -10,11 +10,20 @@
  * - 支持流式响应
  */
 
-import type { AgentStreamEvent, RunResponse } from '@neoclaw/core';
+import type { RunResponse } from '@neoclaw/core';
 import { logger } from '@neoclaw/core/utils/logger';
-import type { Gateway, InboundMessage, MessageHandler, ReplyFn, StreamHandler } from '@neoclaw/core/types/gateway';
-import { WeworkWsClient, type InboundMessage as WsInboundMessage, type MessageCallback } from './ws-client.js';
-import { buildMarkdownContent } from './sender.js';
+import type {
+  Gateway,
+  InboundMessage,
+  MessageHandler,
+  ReplyFn,
+  StreamHandler,
+} from '@neoclaw/core/types/gateway';
+import {
+  WeworkWsClient,
+  type InboundMessage as WsInboundMessage,
+  type MessageCallback,
+} from './ws-client.js';
 
 /**
  * 格式化统计信息
@@ -34,7 +43,7 @@ const log = logger('wework-ws-gateway');
 /**
  * 思考占位符（显示在 LLM 处理时）
  */
-const THINKING_PLACEHOLDER = '思考中...';
+// const THINKING_PLACEHOLDER = '思考中...';
 
 /**
  * 生成流 ID
@@ -128,7 +137,7 @@ export class WeworkWsGateway implements Gateway {
   }
 
   /** 主动发送消息到会话（如重启通知） */
-  async send(userId: string, response: RunResponse): Promise<void> {
+  async send(userId: string, _response: RunResponse): Promise<void> {
     // WebSocket 模式下，主动发送需要找到活动的流
     const streamId = this.activeStreams.get(userId);
     if (streamId && this._client.isConnected) {
@@ -178,7 +187,7 @@ export class WeworkWsGateway implements Gateway {
    * 处理入站消息
    */
   private async _handleInboundMessage(wsMsg: MessageCallback): Promise<void> {
-    const { msgId, msgType, fromUser, chatId } = wsMsg;
+    const { msgId, msgType } = wsMsg;
 
     // 检查重复消息
     if (this.seenMsgIds.has(msgId)) {
@@ -208,10 +217,7 @@ export class WeworkWsGateway implements Gateway {
         // 之前的消息仍在缓冲 - 合并这条消息
         existing.messages.push(wsMsg);
         clearTimeout(existing.timer);
-        existing.timer = setTimeout(
-          () => this._flushMessageBuffer(streamKey),
-          this.DEBOUNCE_MS
-        );
+        existing.timer = setTimeout(() => this._flushMessageBuffer(streamKey), this.DEBOUNCE_MS);
         log.info('Wework: message buffered for merge', {
           streamKey,
           msgId,
@@ -264,7 +270,10 @@ export class WeworkWsGateway implements Gateway {
       const allImageUrls = messages.flatMap((m) =>
         m.msgType === 'image' ? (m.imageUrl ? [m.imageUrl] : []) : m.imageUrls || []
       );
-      if (allImageUrls.length > 0 && (primaryMsg.msgType === 'text' || primaryMsg.msgType === 'mixed')) {
+      if (
+        allImageUrls.length > 0 &&
+        (primaryMsg.msgType === 'text' || primaryMsg.msgType === 'mixed')
+      ) {
         if (primaryMsg.msgType === 'text') {
           // 转换为混合消息类型
           primaryMsg.msgType = 'mixed';
@@ -302,7 +311,7 @@ export class WeworkWsGateway implements Gateway {
     // 构建入站消息
     const msg: InboundMessage = {
       id: wsMsg.msgId,
-      text: (wsMsg.msgType === 'text' || wsMsg.msgType === 'mixed') ? (wsMsg.content || '') : '',
+      text: wsMsg.msgType === 'text' || wsMsg.msgType === 'mixed' ? wsMsg.content || '' : '',
       chatId,
       threadRootId: undefined,
       authorId: wsMsg.fromUser,

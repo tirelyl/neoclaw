@@ -64,7 +64,7 @@ export async function selectedChannelPrompt() {
 }
 
 export async function channelConfigPrompt(channel: 'feishu' | 'wework') {
-  let channelConfig: Partial<NeoClawConfig['channels']> = {};
+  let channelConfig: Partial<NeoClawConfig['channels']>;
 
   if (channel === 'feishu') {
     const appId = await requiredTextPrompt('Feishu app ID');

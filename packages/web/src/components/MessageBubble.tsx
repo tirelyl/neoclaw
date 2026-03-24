@@ -14,7 +14,7 @@ interface MessageBubbleProps {
   isLast?: boolean;
 }
 
-export function MessageBubble({ message, isLast }: MessageBubbleProps) {
+export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user';
 
   const statsText = useMemo(() => {
@@ -23,12 +23,9 @@ export function MessageBubble({ message, isLast }: MessageBubbleProps) {
     if (message.stats.model) parts.push(message.stats.model);
     if (message.stats.elapsedMs != null)
       parts.push(`${(message.stats.elapsedMs / 1000).toFixed(1)}s`);
-    if (message.stats.inputTokens != null)
-      parts.push(`${message.stats.inputTokens} in`);
-    if (message.stats.outputTokens != null)
-      parts.push(`${message.stats.outputTokens} out`);
-    if (message.stats.costUsd != null)
-      parts.push(`$${message.stats.costUsd.toFixed(4)}`);
+    if (message.stats.inputTokens != null) parts.push(`${message.stats.inputTokens} in`);
+    if (message.stats.outputTokens != null) parts.push(`${message.stats.outputTokens} out`);
+    if (message.stats.costUsd != null) parts.push(`$${message.stats.costUsd.toFixed(4)}`);
     return parts.length > 0 ? parts.join(' · ') : null;
   }, [message.stats]);
 
@@ -42,9 +39,7 @@ export function MessageBubble({ message, isLast }: MessageBubbleProps) {
         } px-4 py-3`}
       >
         {/* Thinking process panel */}
-        {!isUser && message.thinking && (
-          <ThinkingPanel content={message.thinking} />
-        )}
+        {!isUser && message.thinking && <ThinkingPanel content={message.thinking} />}
 
         {/* Message content */}
         <div className="prose prose-invert max-w-none">
@@ -53,7 +48,7 @@ export function MessageBubble({ message, isLast }: MessageBubbleProps) {
           ) : (
             <ReactMarkdown
               components={{
-                code({ node, inline, className, children, ...props }) {
+                code({ inline, className, children, ...props }) {
                   const match = /language-(\w+)/.exec(className || '');
                   return !inline && match ? (
                     <SyntaxHighlighter
@@ -65,10 +60,7 @@ export function MessageBubble({ message, isLast }: MessageBubbleProps) {
                       {String(children).replace(/\n$/, '')}
                     </SyntaxHighlighter>
                   ) : (
-                    <code
-                      className="bg-gray-700 px-1 py-0.5 rounded text-sm"
-                      {...props}
-                    >
+                    <code className="bg-gray-700 px-1 py-0.5 rounded text-sm" {...props}>
                       {children}
                     </code>
                   );

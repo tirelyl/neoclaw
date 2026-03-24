@@ -424,7 +424,7 @@ export class WeworkWsClient extends EventEmitter {
         }
       : null;
 
-    let msgType = 'unknown';
+    let msgType: string;
     let messageCallback: MessageCallback;
 
     if (mixedData && mixedData.msg_item) {

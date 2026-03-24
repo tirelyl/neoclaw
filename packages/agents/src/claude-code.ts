@@ -175,29 +175,29 @@ type OutboundImageSpec = {
   fileName?: string;
 };
 
-function stripImageProtocolBlocks(text: string): string {
-  const lower = text.toLowerCase();
-  const openTag = '<neoclaw_images>';
-  const closeTag = '</neoclaw_images>';
+// function stripImageProtocolBlocks(text: string): string {
+//   const lower = text.toLowerCase();
+//   const openTag = '<neoclaw_images>';
+//   const closeTag = '</neoclaw_images>';
 
-  let i = 0;
-  let out = '';
-  while (i < text.length) {
-    const start = lower.indexOf(openTag, i);
-    if (start === -1) {
-      out += text.slice(i);
-      break;
-    }
-    out += text.slice(i, start);
-    const end = lower.indexOf(closeTag, start + openTag.length);
-    if (end === -1) {
-      // Incomplete block while streaming: hide until we see the closing tag.
-      break;
-    }
-    i = end + closeTag.length;
-  }
-  return out;
-}
+//   let i = 0;
+//   let out = '';
+//   while (i < text.length) {
+//     const start = lower.indexOf(openTag, i);
+//     if (start === -1) {
+//       out += text.slice(i);
+//       break;
+//     }
+//     out += text.slice(i, start);
+//     const end = lower.indexOf(closeTag, start + openTag.length);
+//     if (end === -1) {
+//       // Incomplete block while streaming: hide until we see the closing tag.
+//       break;
+//     }
+//     i = end + closeTag.length;
+//   }
+//   return out;
+// }
 
 function extractOutboundImages(
   text: string,

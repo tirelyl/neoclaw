@@ -14,7 +14,13 @@ import { WebSocketServer } from 'ws';
 import type { AgentStreamEvent, RunResponse } from '@neoclaw/core';
 import type { DashboardConfig } from '@neoclaw/core/config';
 import { logger } from '@neoclaw/core/utils/logger';
-import type { Gateway, InboundMessage, MessageHandler, ReplyFn, StreamHandler } from '@neoclaw/core/types/gateway';
+import type {
+  Gateway,
+  InboundMessage,
+  MessageHandler,
+  ReplyFn,
+  StreamHandler,
+} from '@neoclaw/core/types/gateway';
 import { createServer } from './server.js';
 import { SessionManager } from './session-manager.js';
 
@@ -32,6 +38,7 @@ export class DashboardGateway implements Gateway {
   private _httpServer: HttpServer | null = null;
   private _wsServer: WebSocketServer | null = null;
   private _sessionManager: SessionManager;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private _clients: Map<string, any> = new Map(); // sessionId -> WebSocket
   private _frontendProcess: ReturnType<typeof spawn> | null = null;
 
@@ -170,6 +177,7 @@ export class DashboardGateway implements Gateway {
   /**
    * Handle new client connection or session re-registration
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private _handleClientConnect(sessionId: string, ws: any, connectionId: string): void {
     log.info(`[onConnect] Registering WebSocket (conn_${connectionId}) for session: ${sessionId}`);
 
@@ -189,6 +197,7 @@ export class DashboardGateway implements Gateway {
   private _handleSessionChange(
     oldSessionId: string | null,
     newSessionId: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ws: any,
     connectionId: string
   ): void {

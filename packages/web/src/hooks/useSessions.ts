@@ -26,9 +26,12 @@ export function useSessions() {
 
         // Try to restore the last selected session, otherwise use the most recent one
         const lastSessionId = localStorage.getItem(LAST_SESSION_ID_KEY);
-        const sessionIdToSelect = lastSessionId && sorted.find(s => s.id === lastSessionId)
-          ? lastSessionId
-          : (sorted.length > 0 ? sorted[0].id : null);
+        const sessionIdToSelect =
+          lastSessionId && sorted.find((s) => s.id === lastSessionId)
+            ? lastSessionId
+            : sorted.length > 0
+              ? sorted[0].id
+              : null;
 
         if (sessionIdToSelect) {
           setCurrentSessionId(sessionIdToSelect);
@@ -48,7 +51,6 @@ export function useSessions() {
       setSessions([newSession]);
       setCurrentSessionId(newSession.id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
   // Save last selected session ID whenever it changes
@@ -73,23 +75,26 @@ export function useSessions() {
     );
   }, []);
 
-  const deleteSession = useCallback((sessionId: string) => {
-    // Delete messages from localStorage
-    const messagesKey = `${MESSAGES_STORAGE_PREFIX}${sessionId}`;
-    localStorage.removeItem(messagesKey);
+  const deleteSession = useCallback(
+    (sessionId: string) => {
+      // Delete messages from localStorage
+      const messagesKey = `${MESSAGES_STORAGE_PREFIX}${sessionId}`;
+      localStorage.removeItem(messagesKey);
 
-    setSessions((prev) => prev.filter((session) => session.id !== sessionId));
+      setSessions((prev) => prev.filter((session) => session.id !== sessionId));
 
-    // If we deleted the current session, switch to another one
-    if (sessionId === currentSessionId) {
-      const remaining = sessions.filter((s) => s.id !== sessionId);
-      if (remaining.length > 0) {
-        setCurrentSessionId(remaining[0].id);
-      } else {
-        setCurrentSessionId(null);
+      // If we deleted the current session, switch to another one
+      if (sessionId === currentSessionId) {
+        const remaining = sessions.filter((s) => s.id !== sessionId);
+        if (remaining.length > 0) {
+          setCurrentSessionId(remaining[0].id);
+        } else {
+          setCurrentSessionId(null);
+        }
       }
-    }
-  }, [currentSessionId, sessions]);
+    },
+    [currentSessionId, sessions]
+  );
 
   const selectSession = useCallback((sessionId: string) => {
     setCurrentSessionId(sessionId);

@@ -1,5 +1,5 @@
 ---
-title: "Preferences, habits, tools, workflow"
+title: 'Preferences, habits, tools, workflow'
 date: 2026-03-07
 tags: []
 ---

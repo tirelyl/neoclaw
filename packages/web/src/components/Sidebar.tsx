@@ -99,7 +99,6 @@ export function Sidebar({
   onSelectSession,
   onSelectNavigation,
   activeNavigationKey,
-  connectionStatus,
   className,
   onRequestClose,
 }: SidebarProps) {

@@ -101,6 +101,7 @@ export async function checkFileAccess(filePath: string, blacklist: string[]): Pr
 /**
  * Middleware wrapper for file operations that checks access before execution.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function withFileGuard<T extends Array<any>, R>(
   blacklist: string[],
   fileArgIndex: number,

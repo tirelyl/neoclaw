@@ -17,7 +17,13 @@ import * as Lark from '@larksuiteoapi/node-sdk';
 import type { AgentStreamEvent, OutboundImage, RunResponse } from '@neoclaw/core';
 import type { FeishuConfig } from '@neoclaw/core/config';
 import { logger } from '@neoclaw/core/utils/logger';
-import type { Gateway, InboundMessage, MessageHandler, ReplyFn, StreamHandler } from '@neoclaw/core/types/gateway';
+import type {
+  Gateway,
+  InboundMessage,
+  MessageHandler,
+  ReplyFn,
+  StreamHandler,
+} from '@neoclaw/core/types/gateway';
 import type { BotCredentials, RawMessageEvent } from './client.js';
 import { fetchBotInfo, getEventDispatcher, getHttpClient, getWsClient } from './client.js';
 import { parseMessage } from './receiver.js';

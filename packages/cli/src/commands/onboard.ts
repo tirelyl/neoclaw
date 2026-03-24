@@ -25,7 +25,7 @@ function checkConfig(path: string) {
   let rawConfig: unknown | undefined;
   try {
     rawConfig = JSON.parse(readFileSync(path, 'utf-8'));
-  } catch (error) {
+  } catch {
     log.info('Configuration file read failed. A new file will be created.');
   }
 

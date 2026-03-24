@@ -30,9 +30,7 @@ export function ThinkingPanel({ content }: ThinkingPanelProps) {
 
       {isExpanded && (
         <div className="px-3 py-2 bg-gray-800 text-sm text-gray-400 max-h-96 overflow-y-auto">
-          <ReactMarkdown className="prose prose-sm prose-invert">
-            {content}
-          </ReactMarkdown>
+          <ReactMarkdown className="prose prose-sm prose-invert">{content}</ReactMarkdown>
         </div>
       )}
     </div>
